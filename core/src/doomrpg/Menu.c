@@ -129,6 +129,8 @@ void Menu_setAbout(Menu_t* menu)
 		"\x80\x80\x80\x80\x80 N64 PORT \x80\x80\x80\x80\x80",
 		"N64 port made in 2026",
 		"by BigChat88",
+		"",
+		"Version 0.5.0",
 	};
 	MenuSystem_t* menuSystem = menu->doomRpg->menuSystem;
 	int i;

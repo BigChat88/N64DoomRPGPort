@@ -149,13 +149,13 @@ void PD_InputPoll(void)
     joypad_buttons_t h = joypad_get_buttons_held(JOYPAD_PORT_1);
     joypad_inputs_t  in = joypad_get_inputs(JOYPAD_PORT_1);
 
-    /* C-Down passes the turn in play (the engine's PASSTURN action).  It is
-     * consumed here so the navigation block below does not also read it as a
-     * step back -- D-Down still does that.  In menus C-Down is left alone and
-     * keeps acting as "menu down". */
-    if (p.c_down && in_play_context()) {
-        push(AVK_PASSTURN);
-        p.c_down = 0;
+    /* C-Down passes the turn in play (the engine's PASSTURN action); C-Up has
+     * no in-play role (D-Up moves forward).  Both are consumed here so the
+     * navigation block below does not also read them as a step back / forward.
+     * In menus they are left alone and keep acting as "menu down / up". */
+    if (in_play_context()) {
+        if (p.c_down) { push(AVK_PASSTURN); p.c_down = 0; }
+        if (p.c_up)   { p.c_up = 0; }
     }
 
     /* Debug menu: the engine opens MENU_DEBUG when the digits 3-6-6-6 are
