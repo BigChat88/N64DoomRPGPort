@@ -78,14 +78,14 @@ filesystem/snd/%.wav64: assets/snd/%.wav
 # map, mixed on its own channel by pd_sound.c.  <map> matches the .bsp basenames
 # (intro, junction, junction_destroyed, level01..level07, reactor).
 #
-# Source WAVs live in assets/new/ -- hand-trimmed 48 kHz mono loops, already
-# edited so the loop seam sounds clean.  They are used as-is: audioconv64 only
-# Opus-compresses and marks the whole file as looping, it does NOT trim them.
+# Source WAVs live in assets/sound-example/ -- hand-trimmed 48 kHz mono loops,
+# already edited so the loop seam sounds clean.  They are used as-is: audioconv64
+# only Opus-compresses and marks the whole file as looping, it does NOT trim them.
 # (tools/ost_setup.sh is the old ffmpeg auto-cut path and is no longer used.)
-MUS_WAV   := $(wildcard assets/new/*.wav)
-MUS_WAV64 := $(MUS_WAV:assets/new/%.wav=filesystem/mus/%.wav64)
+MUS_WAV   := $(wildcard assets/sound-example/*.wav)
+MUS_WAV64 := $(MUS_WAV:assets/sound-example/%.wav=filesystem/mus/%.wav64)
 
-filesystem/mus/%.wav64: assets/new/%.wav
+filesystem/mus/%.wav64: assets/sound-example/%.wav
 	@mkdir -p $(dir $@)
 	$(N64_AUDIOCONV) --wav-compress 3 --wav-mono --wav-loop true -o $(dir $@) $<
 

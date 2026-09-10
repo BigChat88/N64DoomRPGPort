@@ -257,8 +257,8 @@ def main() -> None:
     ap.add_argument("--bgm-dir", type=Path,
                     help="dir of <map>.wav files for streamed per-level music "
                          "(intro, junction, junction_destroyed, level01..07, "
-                         "reactor).  Default: core/assets/new/ if it has .wav "
-                         "files, else no per-level music.")
+                         "reactor).  Default: core/assets/sound-example/ if it "
+                         "has .wav files, else no per-level music.")
     ap.add_argument("--no-audio", action="store_true",
                     help="skip all audio (SFX + music); build a silent ROM fast")
     ap.add_argument("--keep-work", action="store_true",
@@ -358,8 +358,8 @@ def main() -> None:
             log(f"      {n} sfx -> wav64")
             bgm_dir = args.bgm_dir
             if bgm_dir is None:
-                # auto: streamed per-level loops dropped in core/assets/new/
-                auto = CORE / "assets" / "new"
+                # auto: streamed per-level loops in core/assets/sound-example/
+                auto = CORE / "assets" / "sound-example"
                 if auto.is_dir() and any(auto.glob("*.wav")):
                     bgm_dir = auto
                     log(f"      auto per-level music: {bgm_dir}")
