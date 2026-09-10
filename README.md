@@ -1,4 +1,4 @@
-# N64DoomRPGPort
+# Doom RPG N64 Port
 
 A Nintendo 64 (libdragon) port of **Doom RPG**, plus a tool that turns your own
 copy of the original BREW game into a runnable `.z64`.
@@ -75,6 +75,18 @@ all come out of your `.bar`.
 Extra flags pass straight through, e.g. `build.cmd --no-audio` for a fast
 silent ROM or `build.cmd --soundfont "C:\path\to\GM.sf2"`. See `python
 app/build_rom.py --help` or `app/README.md` for every option.
+
+## Acknowledgements
+
+Huge thanks to **[Erick194](https://github.com/Erick194)** for
+**[DoomRPG-RE](https://github.com/Erick194/DoomRPG-RE)** — the from-scratch
+reverse-engineered source port of *Doom RPG*. This project vendors that engine
+(upstream `8ff35da`, GPL-3.0) essentially unmodified and simply gives it a
+Nintendo 64 backend; without that work none of this would exist.
+
+Thanks also to the **[libdragon](https://github.com/DragonMinded/libdragon)**
+team for the open-source N64 SDK, and to id Software / JAMDAT / EA for the
+original 2005 game.
 
 # AI Note
 

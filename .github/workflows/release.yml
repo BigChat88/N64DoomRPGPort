@@ -44,6 +44,10 @@ jobs:
       - name: Build libdragon (pinned submodule) + engine
         run: |
           make -C core/libdragon -j"$(nproc)" install
+          # The library `install` target does NOT build the host tools.  The
+          # `engine` target below runs n64sym + n64elfcompress, so build and
+          # install those from the pinned submodule into $N64_INST/bin.
+          make -C core/libdragon/tools -j"$(nproc)" n64sym-install n64elfcompress-install
           make -C core          -j"$(nproc)" engine
           ls -l core/build/doomrpg.elf.stripped core/build/doomrpg.elf.sym
 
