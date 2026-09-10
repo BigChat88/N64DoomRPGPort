@@ -36,10 +36,9 @@ jobs:
       - name: Version
         id: ver
         run: |
-          BASE="$(tr -d ' \r\n' < VERSION)"
-          echo "base=$BASE"                                >> "$GITHUB_OUTPUT"
-          echo "full=${BASE}-b${GITHUB_RUN_NUMBER}"        >> "$GITHUB_OUTPUT"
-          echo "tag=v${BASE}-b${GITHUB_RUN_NUMBER}"        >> "$GITHUB_OUTPUT"
+          VER="$(tr -d ' \r\n' < VERSION)"
+          echo "version=$VER" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VER"    >> "$GITHUB_OUTPUT"
 
       - name: Build libdragon (pinned submodule) + engine
         run: |
@@ -60,7 +59,7 @@ jobs:
         id: stage
         run: |
           set -eu
-          NAME="N64DoomRPGPort-${{ steps.ver.outputs.full }}"
+          NAME="N64DoomRPGPort-${{ steps.ver.outputs.version }}"
           DEST="stage/$NAME"
           mkdir -p "$DEST"
           # exactly the tracked source (git-ignored copyrighted data is excluded
@@ -72,7 +71,7 @@ jobs:
           cp app/vendor/bin/*.exe "$DEST/app/vendor/bin/"
           # provenance
           {
-            echo "N64DoomRPGPort ${{ steps.ver.outputs.full }}"
+            echo "N64DoomRPGPort ${{ steps.ver.outputs.version }}"
             echo "commit:  ${GITHUB_SHA}"
             echo "ref:     ${GITHUB_REF}"
             echo "run:     ${GITHUB_RUN_NUMBER}"
@@ -86,7 +85,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.ver.outputs.tag }}
-          name: N64DoomRPGPort ${{ steps.ver.outputs.full }}
+          name: N64DoomRPGPort ${{ steps.ver.outputs.version }}
           prerelease: true
           fail_on_unmatched_files: true
           generate_release_notes: true
