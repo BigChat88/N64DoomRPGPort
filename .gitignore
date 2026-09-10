@@ -31,8 +31,6 @@ core/assets/doomOST/
 core/assets/new/
 core/assets/snd-java/
 core/tools/classes/
-core/tools/soundfont/*.sf2
-core/tools/soundfont/*.SF2
 
 # --- misc ---
 # keep the libdragon-CLI project marker; ignore its local caches
