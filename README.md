@@ -31,8 +31,7 @@ builder fails early with a clear message if the file is not a Doom RPG `.bar`.
 * **Python 3.8+** on your `PATH` (`python --version`).
 * **Your own `doomrpg.zip`** (or `doomrpg.bar`) — see the section above.
 * **`ffmpeg`** and **`fluidsynth`** on your `PATH`. They render the three BREW
-  MIDI tracks (intro / menu / in-game) into the ROM. The SoundFont they use is
-  already bundled in `core/tools/soundfont/`.
+  MIDI tracks (intro / menu / in-game) into the ROM.
 
 ### Installing FFmpeg on Windows
 

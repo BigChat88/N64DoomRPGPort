@@ -35,6 +35,7 @@ static float  s_music_gain = 1.0f;  /* 0..1   */
 static int    s_music_loop_pending;
 static PD_Snd *s_music_cur;
 static PD_Snd *s_sfx_cur[MAX_SFX_CH];   /* what each SFX channel last played */
+static int     s_sfx_voices;            /* active SFX count sfx_rebalance() last applied */
 
 /* --- per-level background music (streamed Opus from rom:/mus/<map>.wav64) --- */
 static wav64_t s_bgm;
@@ -49,6 +50,7 @@ static PD_Snd *s_stinger;
 static int     s_bgm_resume_after_stinger;
 
 static void bgm_start_channel(void);   /* defined with the level-music block */
+static void sfx_rebalance(int force);  /* defined with the SFX block          */
 
 static void stinger_clear(void)
 {
@@ -105,6 +107,7 @@ void PD_SoundShutdown(void)
     audio_close();
     s_ready = 0;
     s_music_cur = NULL;
+    s_sfx_voices = 0;
     stinger_clear();
 }
 
@@ -116,6 +119,9 @@ void PD_SoundUpdate(void)
         mixer_poll(buf, audio_get_buffer_length());
         audio_write_end();
     }
+
+    /* voices that ended on their own free their headroom back to the rest */
+    sfx_rebalance(0);
 
     /* the level-up stinger has finished playing on MUSIC_CH -- bring the
      * per-level background loop back from the start */
@@ -174,6 +180,35 @@ static float sfx_gain(void)
     return (float)v / 128.0f;
 }
 
+/* Polyphony headroom.  The libdragon mixer sums every channel and the N64 DAC
+ * hard-clips the sum, so several SFX at unity gain crackle -- most audible when
+ * a cluster of enemies dies on the same frame.  Scale each live SFX voice by
+ * ~1/sqrt(n): a lone sound stays at full level, four play at half each, which
+ * keeps the summed peak roughly bounded without a per-sample limiter.  Cheap:
+ * a 10-entry scan plus one mixer_ch_set_vol per active voice, and only when the
+ * voice count actually changed (or `force`, for the volume slider). */
+static void sfx_rebalance(int force)
+{
+    int n = 0;
+    for (int c = 0; c < MAX_SFX_CH; c++) {
+        if (s_sfx_cur[c] && mixer_ch_playing(c)) n++;
+        else s_sfx_cur[c] = NULL;            /* voice ended -- release the slot */
+    }
+    if (!force && n == s_sfx_voices) return;
+    s_sfx_voices = n;
+    if (n == 0) return;
+
+    /* poly[n] ~= 1/sqrt(n), clamped so one or two voices are barely touched */
+    static const float poly[MAX_SFX_CH + 1] = {
+        1.00f, 1.00f, 0.71f, 0.58f, 0.50f, 0.45f,
+        0.41f, 0.38f, 0.35f, 0.33f, 0.32f,
+    };
+    float g = sfx_gain() * poly[n];
+    for (int c = 0; c < MAX_SFX_CH; c++)
+        if (s_sfx_cur[c] && mixer_ch_playing(c))
+            mixer_ch_set_vol(c, g, g);
+}
+
 void PD_SfxPlay(int ch, void *handle, int loop)
 {
     PD_Snd *s = (PD_Snd *)handle;
@@ -191,7 +226,7 @@ void PD_SfxPlay(int ch, void *handle, int loop)
     s_sfx_cur[ch] = s;
     wav64_set_loop(&s->wav, loop != 0);
     mixer_ch_play(ch, &s->wav.wave);
-    mixer_ch_set_vol(ch, sfx_gain(), sfx_gain());
+    sfx_rebalance(1);           /* re-spread headroom across the new voice count */
 }
 
 void PD_SfxStop(int ch)
@@ -199,6 +234,7 @@ void PD_SfxStop(int ch)
     if (!s_ready || ch < 0 || ch >= MAX_SFX_CH) return;
     if (mixer_ch_playing(ch)) mixer_ch_stop(ch);
     s_sfx_cur[ch] = NULL;
+    sfx_rebalance(0);          /* one voice fewer -- bring the rest back up */
 }
 
 int PD_SfxPlaying(int ch)
@@ -211,8 +247,7 @@ void PD_SfxSetMasterVol(int vol_0_128)
 {
     s_sfx_vol = vol_0_128;
     if (!s_ready) return;
-    for (int ch = 0; ch < MAX_SFX_CH; ch++)
-        if (mixer_ch_playing(ch)) mixer_ch_set_vol(ch, sfx_gain(), sfx_gain());
+    sfx_rebalance(1);
 }
 
 void PD_SfxSetChunkVol(void *handle, int vol_0_128)
