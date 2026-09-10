@@ -143,27 +143,19 @@ static void rumble_tick(void)
 
 void PD_InputPoll(void)
 {
-    static int s_az_latch;   /* A+Z held -> PASSTURN already fired this hold */
-
     joypad_poll();
     rumble_tick();
     joypad_buttons_t p = joypad_get_buttons_pressed(JOYPAD_PORT_1);
     joypad_buttons_t h = joypad_get_buttons_held(JOYPAD_PORT_1);
     joypad_inputs_t  in = joypad_get_inputs(JOYPAD_PORT_1);
 
-    /* Hold A + Z to pass the turn.  While both are held the individual A
-     * (attack/confirm) and Z (fire) actions are suppressed, and PASSTURN is
-     * emitted once until one of them is released. */
-    int az_both = h.a && h.z;
-    if (az_both) {
-        p.a = 0;
-        p.z = 0;
-        if (!s_az_latch && in_play_context()) {
-            push(AVK_PASSTURN);
-        }
-        s_az_latch = 1;
-    } else {
-        s_az_latch = 0;
+    /* C-Down passes the turn in play (the engine's PASSTURN action).  It is
+     * consumed here so the navigation block below does not also read it as a
+     * step back -- D-Down still does that.  In menus C-Down is left alone and
+     * keeps acting as "menu down". */
+    if (p.c_down && in_play_context()) {
+        push(AVK_PASSTURN);
+        p.c_down = 0;
     }
 
     /* Debug menu: the engine opens MENU_DEBUG when the digits 3-6-6-6 are
