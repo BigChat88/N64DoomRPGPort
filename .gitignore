@@ -1,0 +1,43 @@
+# --- build output ---
+core/build/
+core/filesystem/DoomRPG.zip
+core/filesystem/libdragon_logo.sprite
+core/filesystem/snd/
+core/filesystem/mus/
+output/*
+!output/README.md
+*.z64
+*.elf
+*.elf.stripped
+*.sym
+*.dfs
+dist/
+app/dist/
+app/build/
+__pycache__/
+*.pyc
+
+# --- copyrighted game data: never commit ---
+# The original Doom RPG BREW archive, and anything decoded from it or from the
+# game's soundtrack.  Bring your own; see README.md.
+input/*
+!input/README.md
+*.bar
+doomrpg.zip
+DoomRPG.zip
+core/assets/snd/
+core/assets/mus/
+core/assets/doomOST/
+core/assets/new/
+core/assets/snd-java/
+core/tools/classes/
+core/tools/soundfont/*.sf2
+core/tools/soundfont/*.SF2
+
+# --- misc ---
+# keep the libdragon-CLI project marker; ignore its local caches
+core/.libdragon/*
+!core/.libdragon/config.json
+.libdragon/
+tmp/
+tmp_assets/

@@ -1,0 +1,34 @@
+N64DoomPort
+===========
+
+This project as a whole is licensed under GPL-3.0 (see LICENSE), because it is
+compiled and linked with GPL-3.0 code.
+
+Third-party components
+----------------------
+
+* DoomRPG-RE  (core/src/doomrpg/)
+    Erick194/DoomRPG-RE, upstream commit 8ff35da.  GPL-3.0.
+    Reverse-engineered engine for Doom RPG.  Vendored unmodified except that
+    Main.c and SDL_Video.c are omitted (replaced by core/src/port/).
+
+* BarToZip.exe, zlib.dll  (core/tools/bartozip/)
+    From the DoomRPG-RE v0.2.1+ release.  GPL-3.0 (with DoomRPG-RE).
+    Decodes the BREW .bar, including the PMD sound resources.
+
+* libdragon  (core/libdragon/, git submodule)
+    DragonMinded/libdragon.  The Unlicense (public domain).
+    N64 SDK: display / mixer / wav64 / DragonFS and the host tools
+    (mkdfs, n64tool, audioconv64, n64elfcompress, ed64romconfig).
+
+* miniz  (core/src/doomrpg/miniz.h)
+    Rich Geldreich et al.  MIT / public domain.  Raw inflate for Z_Zip.c.
+
+Not included
+------------
+
+Doom RPG is (c) id Software / Electronic Arts / JAMDAT.  No Doom RPG assets,
+maps, text, audio or soundtrack are distributed here.  Building a playable ROM
+requires a doomrpg.zip that you obtained legally.
+
+SoundFonts (core/tools/soundfont/) are third-party and are not redistributed.

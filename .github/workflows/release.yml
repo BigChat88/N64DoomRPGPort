@@ -1,0 +1,99 @@
+name: release
+
+# A push to the main branch -- a direct commit or a merged pull request, both
+# land as a push -- builds the engine + host tools and publishes a GitHub
+# Release whose asset is a self-contained "everything you need to build a ROM"
+# archive.
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  bundle:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/dragonminded/libdragon:latest   # mips64-elf toolchain + $N64_INST
+
+    steps:
+      - name: Install packaging deps
+        run: |
+          apt-get update -qq
+          apt-get install -y --no-install-recommends zip rsync git ca-certificates gcc-mingw-w64-x86-64
+
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Trust the workspace
+        run: git config --global --add safe.directory '*'
+
+      - name: Version
+        id: ver
+        run: |
+          BASE="$(tr -d ' \r\n' < VERSION)"
+          echo "base=$BASE"                                >> "$GITHUB_OUTPUT"
+          echo "full=${BASE}-b${GITHUB_RUN_NUMBER}"        >> "$GITHUB_OUTPUT"
+          echo "tag=v${BASE}-b${GITHUB_RUN_NUMBER}"        >> "$GITHUB_OUTPUT"
+
+      - name: Build libdragon (pinned submodule) + engine
+        run: |
+          make -C core/libdragon -j"$(nproc)" install
+          make -C core          -j"$(nproc)" engine
+          ls -l core/build/doomrpg.elf.stripped core/build/doomrpg.elf.sym
+
+      - name: Cross-compile the Windows host tools
+        run: |
+          CC=x86_64-w64-mingw32-gcc bash app/vendor/bin/build-tools.sh
+          ls -l app/vendor/bin/*.exe
+
+      - name: Stage the bundle
+        id: stage
+        run: |
+          set -eu
+          NAME="N64DoomRPGPort-${{ steps.ver.outputs.full }}"
+          DEST="stage/$NAME"
+          mkdir -p "$DEST"
+          # exactly the tracked source (git-ignored copyrighted data is excluded
+          # by definition), including the libdragon submodule
+          git ls-files --recurse-submodules -z | rsync -a --files-from=- --from0 ./ "$DEST/"
+          # the CI-built binaries the packer needs
+          mkdir -p "$DEST/app/vendor/engine"
+          cp core/build/doomrpg.elf.stripped core/build/doomrpg.elf.sym "$DEST/app/vendor/engine/"
+          cp app/vendor/bin/*.exe "$DEST/app/vendor/bin/"
+          # provenance
+          {
+            echo "N64DoomRPGPort ${{ steps.ver.outputs.full }}"
+            echo "commit:  ${GITHUB_SHA}"
+            echo "ref:     ${GITHUB_REF}"
+            echo "run:     ${GITHUB_RUN_NUMBER}"
+            echo "built:   $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          } > "$DEST/BUILD_INFO.txt"
+          ( cd stage && zip -qr "../$NAME.zip" "$NAME" )
+          ls -l "$NAME.zip"
+          echo "asset=$NAME.zip" >> "$GITHUB_OUTPUT"
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: N64DoomRPGPort ${{ steps.ver.outputs.full }}
+          prerelease: true
+          fail_on_unmatched_files: true
+          generate_release_notes: true
+          body: |
+            Automated build from `${{ github.ref_name }}` @ `${{ github.sha }}`.
+
+            **`${{ steps.stage.outputs.asset }}`** contains everything needed to
+            build a ROM: port source (GPL-3.0) + the vendored libdragon
+            submodule + the prebuilt engine (`app/vendor/engine/`) and Windows
+            host tools (`app/vendor/bin/`).
+
+            Usage: unzip, put your `doomrpg.zip` in `input/`, run `build.cmd`.
+            No Doom RPG game data or soundtrack is included.
+          files: ${{ steps.stage.outputs.asset }}
