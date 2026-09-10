@@ -88,6 +88,6 @@ Thanks also to the **[libdragon](https://github.com/DragonMinded/libdragon)**
 team for the open-source N64 SDK, and to id Software / JAMDAT / EA for the
 original 2005 game.
 
-# AI Note
+## AI Note
 
 The application was developed using AI. I'm just an enthusiast who wanted to create interesting projects. In this case, how it was achieved is not relevant to me.
