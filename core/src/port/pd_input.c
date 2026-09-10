@@ -70,7 +70,6 @@ static int in_menu_context(void)
 }
 
 #define QUEUE_LEN 16
-#define AZ_WINDOW_MS 180u   /* grace for the 2nd button of the A+Z pass-turn combo */
 static int  s_queue[QUEUE_LEN];
 static int  s_head, s_tail;
 static int  s_stick_latch_x, s_stick_latch_y;
@@ -144,30 +143,21 @@ static void rumble_tick(void)
 
 void PD_InputPoll(void)
 {
-    static int      s_az_latch;     /* A+Z held -> PASSTURN already fired this hold */
-    static unsigned s_a_defer_ms;   /* deadline for a deferred lone-A action; 0 = none */
-    static unsigned s_z_defer_ms;   /* deadline for a deferred lone-Z action; 0 = none */
+    static int s_az_latch;   /* A+Z held -> PASSTURN already fired this hold */
 
     joypad_poll();
     rumble_tick();
     joypad_buttons_t p = joypad_get_buttons_pressed(JOYPAD_PORT_1);
     joypad_buttons_t h = joypad_get_buttons_held(JOYPAD_PORT_1);
     joypad_inputs_t  in = joypad_get_inputs(JOYPAD_PORT_1);
-    unsigned now_ms = DoomRPG_GetUpTimeMS();
 
-    /* Hold A + Z to pass the turn.  The two presses almost never land on the
-     * same poll, so in play each button's lone action (A = attack/confirm,
-     * Z = fire) is held back for AZ_WINDOW_MS: if the other button joins inside
-     * that window the combo here fires PASSTURN and cancels the pending action;
-     * otherwise the lone action is emitted once the window passes or the button
-     * is released (see the actions block).  A-then-Z and Z-then-A both resolve
-     * to PASSTURN, never an attack. */
+    /* Hold A + Z to pass the turn.  While both are held the individual A
+     * (attack/confirm) and Z (fire) actions are suppressed, and PASSTURN is
+     * emitted once until one of them is released. */
     int az_both = h.a && h.z;
     if (az_both) {
         p.a = 0;
         p.z = 0;
-        s_a_defer_ms = 0;
-        s_z_defer_ms = 0;
         if (!s_az_latch && in_play_context()) {
             push(AVK_PASSTURN);
         }
@@ -210,37 +200,15 @@ void PD_InputPoll(void)
     if (p.c_right)            push(AVK_MOVERIGHT);
 
     /* --- actions --- */
-    /* A / Z: in play, defer the lone action so an A+Z combo can still form (see
-     * the pass-turn block above); in menus / dialogs fire it immediately. */
-    if (p.a) {
-        if (in_play_context()) s_a_defer_ms = now_ms + AZ_WINDOW_MS;
-        else                   push(AVK_SELECT | AVK_MENU_SELECT);   /* confirm / attack / advance */
-    }
-    if (p.z) {
-        if (in_play_context()) s_z_defer_ms = now_ms + AZ_WINDOW_MS;
-        else                   push(AVK_SELECT);                     /* fire */
-    }
-    /* resolve a deferred A / Z: emit once its window elapses or it is released
-     * without the other button joining (a quick tap still registers) */
-    if (s_a_defer_ms && (!h.a || (int)(now_ms - s_a_defer_ms) >= 0)) {
-        push(AVK_SELECT | AVK_MENU_SELECT);
-        s_a_defer_ms = 0;
-    }
-    if (s_z_defer_ms && (!h.z || (int)(now_ms - s_z_defer_ms) >= 0)) {
-        push(AVK_SELECT);
-        s_z_defer_ms = 0;
-    }
+    if (p.a)     push(AVK_SELECT | AVK_MENU_SELECT);   /* confirm / attack / advance */
     if (p.b) {
         if (in_password_entry())      push(AVK_CLR);                   /* erase last digit */
         else if (in_play_context())   push(AVK_AUTOMAP);               /* toggle the map */
         else if (b_is_back_context()) push(AVK_CLR | AVK_MENU_OPEN);   /* back */
         else                          push(AVK_CLR);                   /* cancel, never opens menu */
     }
-    if (p.start) {
-        s_a_defer_ms = 0;                               /* opening the menu drops any pending action */
-        s_z_defer_ms = 0;
-        push(AVK_MENUOPEN | AVK_MENU_OPEN);             /* the only menu opener */
-    }
+    if (p.z)     push(AVK_SELECT);                      /* fire */
+    if (p.start) push(AVK_MENUOPEN | AVK_MENU_OPEN);    /* the only menu opener */
     if (p.l)     push(AVK_PREVWEAPON);
     if (p.r)     push(AVK_NEXTWEAPON);
 
