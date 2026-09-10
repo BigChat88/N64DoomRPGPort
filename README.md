@@ -25,8 +25,6 @@ every `*.bsp` map (`intro`, `junction`, `level01`…`level07`, `reactor`, `menu`
 …), the menu `*.bmp` images, `help.txt`, and ~95 PMD sound resources. The
 builder fails early with a clear message if the file is not a Doom RPG `.bar`.
 
-Nothing else is required: the maps, textures, SFX and the three music tracks
-all come out of your `.bar`.
 
 ## What do you need
 

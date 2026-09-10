@@ -90,14 +90,4 @@ jobs:
           prerelease: true
           fail_on_unmatched_files: true
           generate_release_notes: true
-          body: |
-            Automated build from `${{ github.ref_name }}` @ `${{ github.sha }}`.
-
-            **`${{ steps.stage.outputs.asset }}`** contains everything needed to
-            build a ROM: port source (GPL-3.0) + the vendored libdragon
-            submodule + the prebuilt engine (`app/vendor/engine/`) and Windows
-            host tools (`app/vendor/bin/`).
-
-            Usage: unzip, put your `doomrpg.zip` in `input/`, run `build.cmd`.
-            No Doom RPG game data or soundtrack is included.
           files: ${{ steps.stage.outputs.asset }}
