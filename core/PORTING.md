@@ -112,7 +112,7 @@ likewise superseded by BarToZip for the music.
 
 ### Per-level background music
 
-Optional. One WAV per map lives in `assets/new/<map>.wav` (the `.bsp`
+Optional. One WAV per map lives in `assets/sound-example/<map>.wav` (the `.bsp`
 basenames: `intro`, `junction`, `junction_destroyed`, `level01`..`level07`,
 `reactor`) — hand-trimmed 48 kHz mono 16-bit PCM loops, already edited so the
 loop seam sounds clean. They are used as-is: the Makefile runs `audioconv64
@@ -124,7 +124,7 @@ MP3 in `assets/doomOST/` to a ~120 s loop) is no longer used.
 map loads (`PD_LevelMusicForMap`, called from `DoomCanvas_loadMedia`); it is
 independent of the engine's SFX and its intro/menu music. The audio menu gains
 a **Music: on/off** item (`doomCanvas->musicEnabled`, persisted in `Config`,
-`CONFIG_VERSION` 24). With `assets/new/` empty the game builds and runs exactly
+`CONFIG_VERSION` 24). With `assets/sound-example/` empty the game builds and runs exactly
 as before.
 
 - `src/doomrpg/Z_Zip.c` `readZipFileEntry()` is still patched to **return NULL**
