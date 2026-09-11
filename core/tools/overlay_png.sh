@@ -4,12 +4,20 @@
 # The Help/About screens draw a single 320x240 picture that the engine blits 1:1
 # (DoomCanvas_drawImage, no scaling), so every output is exactly 320x240.
 #
-# Overscan: the engine draws these edge to edge with no safe-area margin, and a
-# real N64 -> TV hides roughly the outer 5-8% of each edge.  The controller
-# diagram has button labels close to the edges, so for it the artwork is scaled
-# down into a TV-safe box and centred on a black 320x240 canvas (SAFE=1, the
-# default when the destination basename is "n64pad").  Backgrounds such as
-# aboutbg have no edge content and stay full-bleed (SAFE=0).
+# Overscan: MenuSystem_paint draws these two screens edge to edge, bypassing
+# the small vertical safe margin (PD_SAFE_AREA_Y, DoomCanvas.c) that every
+# other screen -- gameplay, HUD, the in-game pause menu -- gets baked into
+# displayRect.  Left alone that made Help/About look inconsistent with the
+# rest of the game: About came out full-bleed while the controller diagram
+# (button labels sit right at the edges) got its own, much wider, hand-picked
+# margin.  Both are now generated SAFE=1 with MARGIN_Y matching
+# PD_SAFE_AREA_Y exactly, so their black top/bottom band lines up with the
+# margin gameplay already reserves.  MARGIN_X has no engine equivalent
+# (displayRect has zero horizontal inset at 320x240) but is kept small and
+# non-zero so the safe box stays ~4:3 -- both source images are ~4:3 already,
+# so at MARGIN_X=0 the aspect-preserving fit below would still pillarbox by
+# almost the same amount on its own, just asymmetrically; picking it up front
+# keeps the margin even on all four sides instead.
 #
 # Colour depth: DoomRPG-RE renders into a 16bpp framebuffer and the N64 display
 # path further drops green's low bit, so whatever we feed it is shown as RGB555
@@ -36,8 +44,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 DITHER="${DITHER:-1}"
-MARGIN_X="${MARGIN_X:-16}"      # px trimmed from left AND right  (5% of 320)
-MARGIN_Y="${MARGIN_Y:-12}"      # px trimmed from top  AND bottom (5% of 240)
+MARGIN_X="${MARGIN_X:-11}"      # px trimmed from left AND right (keeps the safe box ~4:3)
+MARGIN_Y="${MARGIN_Y:-8}"       # px trimmed from top  AND bottom -- matches PD_SAFE_AREA_Y
 
 convert_one() {  # $1 = src png   $2 = dst bmp   $3 = safe (1/0)
     DITHER="$DITHER" MARGIN_X="$MARGIN_X" MARGIN_Y="$MARGIN_Y" SAFE="$3" \
@@ -113,8 +121,9 @@ print(f"  {src} -> {dst}  (320x240, 24-bit, ~{shown} RGB555 colours"
 PY
 }
 
-# SAFE default: on for the controller diagram, off for backgrounds
-safe_for() { case "$(basename "$1" .bmp)" in n64pad) echo 1;; *) echo 0;; esac; }
+# SAFE default: on for both overlays, so their margin matches PD_SAFE_AREA_Y
+# instead of one being full-bleed and the other hand-tuned.
+safe_for() { echo 1; }
 
 if [ "$#" -eq 2 ]; then
     convert_one "$1" "$2" "${SAFE:-$(safe_for "$2")}"

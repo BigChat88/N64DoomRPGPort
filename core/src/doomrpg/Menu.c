@@ -129,6 +129,8 @@ void Menu_setAbout(Menu_t* menu)
 		"\x80\x80\x80\x80\x80 N64 PORT \x80\x80\x80\x80\x80",
 		"N64 port made in 2026",
 		"by BigChat88",
+		"",
+		"Version 0.5.0",
 	};
 	MenuSystem_t* menuSystem = menu->doomRpg->menuSystem;
 	int i;
@@ -569,6 +571,9 @@ void Menu_initMenu(Menu_t* menu, int i)
 
 		case MENU_MAP_STATS:
 		{
+			// N64 port: blank line so the first row isn't flush against the top
+			// of the screen (there's no HUD bar above this menu to give it room).
+			MenuItem_Set(&menuSystem->items[menuSystem->numItems++], NULL, 0, 0);
 			MenuItem_Set(&menuSystem->items[menuSystem->numItems++], menu->doomRpg->render->mapName, 2, 0);
 			MenuItem_Set(&menuSystem->items[menuSystem->numItems++], "Completed!", 2, 0);
 			MenuItem_Set(&menuSystem->items[menuSystem->numItems++], NULL, 0, 0);
@@ -586,6 +591,9 @@ void Menu_initMenu(Menu_t* menu, int i)
 
 		case MENU_MAP_STATS_OVERALL:
 		{
+			// N64 port: blank line so the first row isn't flush against the top
+			// of the screen (there's no HUD bar above this menu to give it room).
+			MenuItem_Set(&menuSystem->items[menuSystem->numItems++], NULL, 0, 0);
 			MenuItem_Set(&menuSystem->items[menuSystem->numItems++], menu->doomRpg->render->mapName, 2, 0);
 			MenuItem_Set(&menuSystem->items[menuSystem->numItems++], "Completed!", 2, 0);
 			MenuItem_Set(&menuSystem->items[menuSystem->numItems++], NULL, 0, 0);
