@@ -251,6 +251,7 @@ void Render_SpanMode9(Render_t* render, int param_2, int param_3, int param_4, i
 void Render_draw2DSprite(Render_t* render, int weaponFrame, int flashFrame, int x, int y, byte renderMode, boolean damageBlend);
 
 void Render_fadeScreen(Render_t* render, int fade);
+void Render_applyBerserkTint(Render_t* render);
 void Render_setBerserkColor(Render_t* render);
 
 int Render_findEventIndex(Render_t* render, int i);

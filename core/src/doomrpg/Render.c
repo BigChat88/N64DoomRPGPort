@@ -2944,7 +2944,16 @@ void Render_fadeScreen(Render_t* render, int fade)
 	}
 }
 
-void Render_setBerserkColor(Render_t* render) {
+/* [n64 port] Just the per-pixel red-tint pass, with no blit. Call this
+ * BEFORE DoomCanvas_drawRGB() composites render->framebuffer onto the screen,
+ * so that single composite already carries the tint -- avoids the extra
+ * full-screen blit Render_setBerserkColor() below does on its own, which
+ * used to run a *second* time every frame just to show the tint (see the
+ * call sites in DoomCanvas_playingState() / DoomCanvas_dialogState()).
+ * Only safe where a drawRGB() composite is guaranteed to run right after;
+ * DoomCanvas_combatState() has a branch that skips drawRGB entirely, so it
+ * still uses Render_setBerserkColor() below, which is self-contained. */
+void Render_applyBerserkTint(Render_t* render) {
 	int pitch, i, j;
 	short* pixels;
 	byte red;
@@ -2963,6 +2972,10 @@ void Render_setBerserkColor(Render_t* render) {
 			pixels++;
 		}
 	}
+}
+
+void Render_setBerserkColor(Render_t* render) {
+	Render_applyBerserkTint(render);
 
 	// Necesario para actualizar el framebuffer
 	// Needed to update the framebuffer

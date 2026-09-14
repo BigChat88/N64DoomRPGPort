@@ -130,7 +130,7 @@ void Menu_setAbout(Menu_t* menu)
 		"N64 port made in 2026",
 		"by BigChat88",
 		"",
-		"Version 0.6.0",
+		"Version 0.7.0",
 	};
 	MenuSystem_t* menuSystem = menu->doomRpg->menuSystem;
 	int i;
