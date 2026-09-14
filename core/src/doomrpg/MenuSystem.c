@@ -142,7 +142,6 @@ boolean MenuSystem_enterDigit(MenuSystem_t* menuSystem, int n)
 	int i;
 	int multNum;
 
-	// Nuevo: Evita que se inserten codigos en la pantalla de nivel completado
 	// New: Prevents codes from being inserted into the completed level screen
 	if (menuSystem->menu == MENU_MAP_STATS) {
 		return false;

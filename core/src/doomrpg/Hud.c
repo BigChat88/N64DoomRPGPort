@@ -304,7 +304,6 @@ void Hud_drawEffects(Hud_t* hud)
     }
 
     if (doomRpg->player->berserkerTics) {
-        // Bloqueo esta l�nea ya que la puse en otra funci�n.
         // I block this line since I put it in another function.
         //{
         //    Render_setBerserkColor(doomRpg->render);
@@ -331,7 +330,7 @@ void Hud_drawTopBar(Hud_t* hud)
     updateTime = true;
     // New Code Lines
     {
-        // No actualiza los memsajes en los siguientes estados
+        // Does not update messages in the following states
         if (doomCanvas->state == ST_DYING) {
             updateTime = false;
         }
