@@ -58,7 +58,7 @@ void Menu_LoadHelpResource(Menu_t* menu)
 			dataPos++;
 
 			if (c == 10) {
-				if (j >= 18) { j = 17; } // Previene desbordaminetos de memoria
+				if (j >= 18) { j = 17; } // Prevents memory overflow
 				textLine[j] = '\0';
 				MenuItem_Set(&menu->doomRpg->menuSystem->items[menu->doomRpg->menuSystem->numItems], textLine, 0, 0);
 				menu->doomRpg->menuSystem->numItems++;
@@ -130,7 +130,7 @@ void Menu_setAbout(Menu_t* menu)
 		"N64 port made in 2026",
 		"by BigChat88",
 		"",
-		"Version 0.6.0",
+		"Version 0.7.0",
 	};
 	MenuSystem_t* menuSystem = menu->doomRpg->menuSystem;
 	int i;
@@ -950,11 +950,9 @@ void Menu_initMenu(Menu_t* menu, int i)
 			MenuItem_Set2(&menuSystem->items[menuSystem->numItems++], "Pos:", text, 0, 0);
 
 			
-			// En el c�digo fuente original se obtiene la memoria RAM del dispositivo
-			// In the actual source code, the device�s RAM memory is obtained
+			// In the actual source code, the device's RAM memory is obtained
 			// SDL_snprintf(text, sizeof(text), "%dK", ((menu->doomRpg->m_DeviceInfo).dwRAM + 1023) / 1024);
 			
-			// Actualmente se obtiene el total de toda la momoria inicializada
 			// Currently, it has the total of all initialized memory
 			SDL_snprintf(text, sizeof(text), "%dK", (menu->doomRpg->memoryBeg + DoomRPG_freeMemory() + 1023) / 1024);
 

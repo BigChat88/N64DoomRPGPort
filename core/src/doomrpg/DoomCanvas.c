@@ -401,9 +401,6 @@ void DoomCanvas_combatState(DoomCanvas_t* doomCanvas)
 		DoomCanvas_drawRGB(doomCanvas);
 	}
 
-	// En el c�digo original esta funci�n est� en la funci�n "Hud_drawEffects", pero decid� moverla aqu�, 
-	// esto evita que se superponga a otros objetos dibujados previamente.
-	// 
 	// In the original code this function is in the "Hud_drawEffects" function, but I decided to move it here, 
 	// this prevents it from overlapping other previously drawn objects
 	{
@@ -458,18 +455,20 @@ void DoomCanvas_dialogState(DoomCanvas_t* doomCanvas)
 
 	doomCanvas->isUpdateView = true;
 	DoomCanvas_updateView(doomCanvas);
-	DoomCanvas_drawRGB(doomCanvas);
 
-	// En el c�digo original esta funci�n est� en la funci�n "Hud_drawEffects", pero decid� moverla aqu�, 
-	// esto evita que se superponga a otros objetos dibujados previamente.
-	// 
-	// In the original code this function is in the "Hud_drawEffects" function, but I decided to move it here, 
+	// In the original code this function is in the "Hud_drawEffects" function, but I decided to move it here,
 	// this prevents it from overlapping other previously drawn objects
+	//
+	// [n64 port] Tint before the composite below instead of after (see the matching
+	// comment in DoomCanvas_playingState()) -- drops the extra full-screen blit that
+	// Render_setBerserkColor() used to do on its own just to show the tint.
 	{
 		if (doomCanvas->doomRpg->player->berserkerTics) {
-			Render_setBerserkColor(doomCanvas->doomRpg->render);
+			Render_applyBerserkTint(doomCanvas->doomRpg->render);
 		}
 	}
+
+	DoomCanvas_drawRGB(doomCanvas);
 
 	ParticleSystem_render(doomCanvas->particleSystem, true);
 	Hud_drawTopBar(doomCanvas->hud);
@@ -477,7 +476,6 @@ void DoomCanvas_dialogState(DoomCanvas_t* doomCanvas)
 	Hud_drawEffects(doomCanvas->hud);
 
 	if (doomCanvas->doomRpg->player->berserkerTics) {
-		// Bloqueo esta linea ya que hace que el color del berserk sea el doble de intenso, esto no sucede en la version J2ME
 		// I block this line as it makes the berserk color twice as intense, this does not happen in the J2ME version
 		//{
 		// Render_setBerserkColor(doomCanvas->render);
@@ -748,7 +746,7 @@ void DoomCanvas_drawAutomap(DoomCanvas_t* doomCanvas, boolean z)
 	int px = i6 + ((i5 * (doomCanvas->viewX - 32)) / 64) + (i5 / 2);
 	int py = i7 + ((i5 * (doomCanvas->viewY - 32)) / 64) + (i5 / 2);
 
-	// Port: Corrige la posicion de la imagen ya que se sobrepone sobre las lineas del mapa
+	// Port: nudges the cursor image position since it overlaps the map's grid lines
 	{
 		px += 1;
 		py += 1;
@@ -1247,7 +1245,6 @@ void DoomCanvas_drawStory(DoomCanvas_t* doomCanvas)
 void DoomCanvas_drawRGB(DoomCanvas_t* doomCanvas)
 {
 	// Port:
-	// aplicar esta funci�n antes de actualizar el framebuffer
 	// apply this function before updating the framebuffer
 	//if (doomCanvas->doomRpg->player->berserkerTics) {
 		//Render_setBerserkColor(doomCanvas->doomRpg->render);
@@ -2604,9 +2601,7 @@ void DoomCanvas_playingState(DoomCanvas_t* doomCanvas)
 
 			DoomCanvas_updateView(doomCanvas);
 			applyBerserk = true;
-		} // <- Agregu� el corchete aqu�, ya que necesito que los gr�ficos se actualicen siempre en cada cuadro, 
-		  //    sin que intervengan las actualizaciones del movimiento del jugador.
-		  // <- I added the bracket here as I need the graphics to always update on every frame, 
+		} // <- I added the bracket here as I need the graphics to always update on every frame, 
 		  //    without player movement updates intervening.
 
 			DoomCanvas_drawRGB(doomCanvas);
@@ -2621,18 +2616,23 @@ void DoomCanvas_playingState(DoomCanvas_t* doomCanvas)
 				}
 			}
 
-			DoomCanvas_drawRGB(doomCanvas);
-
-			// En el c�digo original esta funci�n est� en la funci�n "Hud_drawEffects", pero decid� moverla aqu�, 
-			// esto evita que se superponga a otros objetos dibujados previamente.
-			// 
-			// In the original code this function is in the "Hud_drawEffects" function, but I decided to move it here, 
+			// In the original code this function is in the "Hud_drawEffects" function, but I decided to move it here,
 			// this prevents it from overlapping other previously drawn objects
+			//
+			// [n64 port] Tint render->framebuffer here, BEFORE the drawRGB() composite
+			// below, so that single blit already carries the red tint. This used to run
+			// via Render_setBerserkColor() *after* drawRGB, which did its own extra
+			// full-screen blit just to push the (by-then-tinted) framebuffer onto the
+			// screen a second time -- doubling the per-frame blit cost of every frame
+			// while berserker is active. Safe to reorder here because drawRGB always
+			// runs right below, unconditionally, regardless of applyBerserk.
 			{
 				if (doomCanvas->doomRpg->player->berserkerTics && applyBerserk) {
-					Render_setBerserkColor(doomCanvas->doomRpg->render);
+					Render_applyBerserkTint(doomCanvas->doomRpg->render);
 				}
 			}
+
+			DoomCanvas_drawRGB(doomCanvas);
 
 			if (renderParticle) {
 				ParticleSystem_render(doomCanvas->particleSystem, true);

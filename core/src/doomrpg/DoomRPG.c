@@ -400,7 +400,6 @@ static void setBind(int* keyBinds, int keycode)
 {
 	int i;
 
-	// Examina si existe anteriormente, si es as�, se desvincular� de la lista
 	// Examines whether it exists previously, if so, it will be unbind from the list
 	for (i = 0; i < KEYBINDS_MAX; i++) {
 		if (keyBinds[i] == keycode) {
@@ -409,7 +408,6 @@ static void setBind(int* keyBinds, int keycode)
 		}
 	}
 
-	// Se guarda el key code en la lista
 	// The key code is saved in the list
 	for (i = 0; i < KEYBINDS_MAX; i++) {
 		if (keyBinds[i] == -1) {
@@ -715,7 +713,7 @@ void DoomRPG_createImage(DoomRPG_t* doomrpg, const char* resourceName, boolean i
 
 	SDL_PixelFormat* fmt = loadedSurface->format;
 
-	// Convierte a RGB565 y de nuevo a RGB888
+	// Convert to RGB565 and back to RGB888
 	// [n64 port] Only palettised BMPs have a palette to pre-round; a 24-bit
 	// BMP (e.g. the high-colour n64pad overlay) has fmt->palette == NULL and
 	// SDL_CreateTextureFromSurface does the RGB565 reduction per pixel instead.
@@ -796,7 +794,7 @@ void DoomRPG_createImageBerserkColor(DoomRPG_t* doomrpg, const char* resourceNam
 
 	SDL_PixelFormat* fmt = loadedSurface->format;
 
-	// Convierte a RGB565 y de nuevo a RGB888
+	// Convert to RGB565 and back to RGB888
 	if (fmt->palette) {
 	for (int i = 0; i < fmt->palette->ncolors; i++) {
 

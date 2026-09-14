@@ -811,9 +811,6 @@ boolean Player_useCollarItem(Player_t* player)
 		return false;
 	}
 	else if (entity->def->eSubType != 1) {
-		// Este texto no aparece en versiones BREW solo en J2ME, 
-		// ya que no hacia las llamadas de las funciones (Hud_getMessageBuffer, Hud_finishMessageBuffer)
-		// en esta version lo he reparado
 		// This text does not appear in BREW versions only in J2ME, 
 		// since it did not make the calls of the functions(Hud_getMessageBuffer, Hud_finishMessageBuffer)
 		// in this version I have repaired it

@@ -9,11 +9,11 @@ struct Image_s;
 #define MAX_SOUNDCHANNELS	10
 #define MAX_AUDIOFILES		95
 
-#define SND_FLG_LOOP		1	// Hace que el sonido se repita indefinidamente / Makes the sound repeat indefinitely
-#define SND_FLG_STOPSOUNDS	2	// Detiene todos los sonidos / Stops all sounds
+#define SND_FLG_LOOP		1	// Makes the sound repeat indefinitely
+#define SND_FLG_STOPSOUNDS	2	// Stops all sounds
 // New Flags
-#define SND_FLG_NOFORCESTOP 4	// Evita que el canal sea detenido forzosamente / Prevents the channel from being forcibly stopped
-#define SND_FLG_ISMUSIC		8	// Define el canal como una musica / Define the channel as a music
+#define SND_FLG_NOFORCESTOP 4	// Prevents the channel from being forcibly stopped
+#define SND_FLG_ISMUSIC		8	// Defines the channel as music
 
 typedef struct AudioFile_s
 {

@@ -1212,11 +1212,6 @@ void Render_relinkSprite(Render_t* render, Sprite_t* sprite)
 
 void Render_addMapTextures(Render_t* render, int textureId)
 {
-	// Nuevo: esto evita desbordamientos de b�fer
-	// Esto sucede en el archivo level05.bsp, ya que al leer los datos (floorTex) tiene un valor de 153(0x99) 
-	// lo que supera el l�mite de memoria inicializado de mediaTexturesIds que es 152, 
-	// creando as� el desbordamiento, esto tambi�n sucede en dispositivos m�viles BREW
-	//
 	// New: this prevents buffer overflows
 	// This happens in the level05.bsp file, since when reading the data (floorTex) it has a value of 153(0x99)
 	// which exceeds the initialized memory limit of mediaTexturesIds which is 152, thus creating the overflow,
@@ -1247,7 +1242,6 @@ void Render_addMapTexture(Render_t* render, int textureIndex)
 
 void Render_addMapSprites(Render_t* render, int spriteId)
 {
-	// Nuevo: esto evita desbordamientos de b�fer
 	// New avoid buffer overflows
 	if (spriteId >= render->spriteCnt) {
 		spriteId = (render->spriteCnt - 1);
@@ -2249,7 +2243,6 @@ void Render_renderSpriteObject(Render_t* render, Sprite_t* sprite)
 		}
 	}
 
-	// Nuevo: remueve las luces de techo si no hay texturas de piso y techo visibles
 	// New: Remove ceiling lights if no floor and ceiling textures are visible
 	if ((i == 137) && !render->doomRpg->doomCanvas->renderFloorCeilingTextures) {
 		return;
@@ -2881,7 +2874,6 @@ void Render_draw2DSprite(Render_t* render, int weaponFrame, int flashFrame, int 
 
 
 			// Port:
-			// corregir p�xeles vac�os en la parte inferior del gr�fico
 			// fix empty pixels at bottom of graph
 			{
 				//i21 += 1;
@@ -2944,7 +2936,16 @@ void Render_fadeScreen(Render_t* render, int fade)
 	}
 }
 
-void Render_setBerserkColor(Render_t* render) {
+/* [n64 port] Just the per-pixel red-tint pass, with no blit. Call this
+ * BEFORE DoomCanvas_drawRGB() composites render->framebuffer onto the screen,
+ * so that single composite already carries the tint -- avoids the extra
+ * full-screen blit Render_setBerserkColor() below does on its own, which
+ * used to run a *second* time every frame just to show the tint (see the
+ * call sites in DoomCanvas_playingState() / DoomCanvas_dialogState()).
+ * Only safe where a drawRGB() composite is guaranteed to run right after;
+ * DoomCanvas_combatState() has a branch that skips drawRGB entirely, so it
+ * still uses Render_setBerserkColor() below, which is self-contained. */
+void Render_applyBerserkTint(Render_t* render) {
 	int pitch, i, j;
 	short* pixels;
 	byte red;
@@ -2963,8 +2964,11 @@ void Render_setBerserkColor(Render_t* render) {
 			pixels++;
 		}
 	}
+}
 
-	// Necesario para actualizar el framebuffer
+void Render_setBerserkColor(Render_t* render) {
+	Render_applyBerserkTint(render);
+
 	// Needed to update the framebuffer
 
 	SDL_Rect renderQuad, clip;
