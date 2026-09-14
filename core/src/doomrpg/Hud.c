@@ -14,6 +14,11 @@
 #include "Weapon.h"
 #include "SDL_Video.h"
 
+/* N64 port: matches PD_SAFE_AREA_X in DoomCanvas.c -- the berserker tick
+ * counter below is right-anchored flush against displayRect.w, which a CRT's
+ * horizontal overscan crops clean off. See that file for the full comment. */
+#define PD_SAFE_AREA_X	8
+
 Hud_t* Hud_init(Hud_t* hud, DoomRPG_t* doomRpg)
 {
 	printf("Hud_init\n");
@@ -299,7 +304,7 @@ void Hud_drawEffects(Hud_t* hud)
     }
 
     if (doomRpg->player->berserkerTics) {
-        // Bloqueo esta línea ya que la puse en otra función.
+        // Bloqueo esta lï¿½nea ya que la puse en otra funciï¿½n.
         // I block this line since I put it in another function.
         //{
         //    Render_setBerserkColor(doomRpg->render);
@@ -307,7 +312,7 @@ void Hud_drawEffects(Hud_t* hud)
 
         SDL_snprintf(str, sizeof(str), "%d", hud->doomRpg->player->berserkerTics);
         doomCanvas = hud->doomRpg->doomCanvas;
-        DoomCanvas_drawString1(doomCanvas, str, doomCanvas->displayRect.w - 2, hud->doomRpg->hud->statusTopBarHeight + 2, 9);
+        DoomCanvas_drawString1(doomCanvas, str, doomCanvas->displayRect.w - 2 - PD_SAFE_AREA_X, hud->doomRpg->hud->statusTopBarHeight + 2, 9);
     }
 }
 

@@ -36,6 +36,17 @@ static char justAMoment[] = "(Just a moment!)";
  * a monitor, where nothing is cropped and the border is just wasted pixels. */
 #define PD_SAFE_AREA_Y	8
 
+/* N64 port: same idea, but for the left/right edges. displayRect.w/h get the
+ * PD_SAFE_AREA_Y treatment above (re-centring the whole display rect), but
+ * nothing shrinks the width -- most HUD text sits comfortably inset from the
+ * left/right edges anyway, except the berserker tick counter, which is
+ * right-anchored flush against displayRect.w (DoomCanvas_dialogState() below,
+ * and Hud_drawEffects()). On a CRT with horizontal overscan that crops the
+ * last column or two, its rightmost digit is cropped clean off. Nudge just
+ * that one text draw in by this margin rather than shrinking displayRect.w
+ * itself, which would re-scale the whole 3D view and every other HUD element. */
+#define PD_SAFE_AREA_X	8
+
 #define MOVEFORWARD	1
 #define MOVEBACK	2
 #define TURNLEFT	3
@@ -473,7 +484,7 @@ void DoomCanvas_dialogState(DoomCanvas_t* doomCanvas)
 		//}
 
 		SDL_snprintf(text, 8, "%d", doomCanvas->doomRpg->player->berserkerTics);
-		DoomCanvas_drawString1(doomCanvas, text, doomCanvas->displayRect.w - 2, doomCanvas->doomRpg->hud->statusTopBarHeight + 2, 9);
+		DoomCanvas_drawString1(doomCanvas, text, doomCanvas->displayRect.w - 2 - PD_SAFE_AREA_X, doomCanvas->doomRpg->hud->statusTopBarHeight + 2, 9);
 	}
 
 	if (doomCanvas->dialogBuffer[0] == '\0') {
