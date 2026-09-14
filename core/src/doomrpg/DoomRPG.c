@@ -800,6 +800,19 @@ void DoomRPG_createImageBerserkColor(DoomRPG_t* doomrpg, const char* resourceNam
 	if (fmt->palette) {
 	for (int i = 0; i < fmt->palette->ncolors; i++) {
 
+		// [n64 port] Leave the magenta colour-key entry untouched. Retinting
+		// it here shifts it away from the exact RGB565 value SDL_SetColorKey()
+		// captured above (from pure 255,0,255, before this loop runs), so the
+		// blit's colour-key compare in pd_video.c no longer matches and these
+		// "transparent" pixels render as an opaque tinted-magenta background
+		// instead of being skipped (seen on the berserk gib sprites).
+		if (isTransparentMask &&
+		    fmt->palette->colors[i].r == 255 &&
+		    fmt->palette->colors[i].g == 0 &&
+		    fmt->palette->colors[i].b == 255) {
+			continue;
+		}
+
 		int color = ((fmt->palette->colors[i].r >> 3) << 11) | ((fmt->palette->colors[i].g >> 2) << 5) | (fmt->palette->colors[i].b >> 3);
 
 		// Apply Berserk Color
