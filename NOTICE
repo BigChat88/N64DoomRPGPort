@@ -24,6 +24,12 @@ Third-party components
 * miniz  (core/src/doomrpg/miniz.h)
     Rich Geldreich et al.  MIT / public domain.  Raw inflate for Z_Zip.c.
 
+* Dragon logo intro art  (core/assets/intro/dragon1..4.png)
+    lambertjamesd/n64brew2025 (assets/images/intro/), sourced in turn from the
+    N64brew-GameJam2024 repository.  MIT.  The boot "made with libdragon"
+    animation in core/src/port/pd_intro.c is ported from 64Doom's
+    src/i_intro.c, which uses the same art under the same license.
+
 Not included
 ------------
 

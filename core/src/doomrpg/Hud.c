@@ -384,7 +384,7 @@ void Hud_drawTopBar(Hud_t* hud)
         strEnd = ((unsigned int)((w - 1) / 7)) - 1;
     }
 
-    DoomCanvas_drawFont(doomCanvas, text, 1, (hud->statusTopBarHeight >> 1) - 5, 0, strBeg, strEnd, false);
+    DoomCanvas_drawFont(doomCanvas, text, 4, (hud->statusTopBarHeight >> 1) - 5, 0, strBeg, strEnd, false);
 }
 
 void Hud_finishMessageBufferForce(Hud_t* hud, boolean force)

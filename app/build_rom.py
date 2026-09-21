@@ -291,7 +291,7 @@ def main() -> None:
     bar2zip = CORE / "tools" / "bar2zip.py"
     overlay_zip = CORE / "tools" / "overlay_zip.py"
     overlay_dir = CORE / "assets" / "overlay"
-    logo_sprite = CORE / "filesystem" / "libdragon_logo.sprite"
+    intro_sprites = CORE / "filesystem" / "intro"
 
     work = Path(tempfile.mkdtemp(prefix="drpg-pack-"))
     fsroot = work / "fs"
@@ -307,18 +307,22 @@ def main() -> None:
             log("[2/7] overlay_zip += n64pad / aboutbg")
             run([sys.executable, str(overlay_zip), str(drpg_zip), str(overlay_dir)])
 
-        # libdragon splash logo: from a full `libdragon make`, else the bundled
-        # copy, else nothing (pd_intro.c skips the splash if it is missing).
-        logo_bundled = HERE / "vendor" / "fs" / "libdragon_logo.sprite"
-        logo_src = logo_sprite if logo_sprite.is_file() else logo_bundled
-        if logo_src.is_file():
-            shutil.copy2(logo_src, fsroot / "libdragon_logo.sprite")
+        # boot dragon-logo animation: from a full `libdragon make`, else the
+        # bundled copy, else nothing (pd_intro.c skips the animation if any of
+        # the four sprites is missing).
+        intro_bundled = HERE / "vendor" / "fs" / "intro"
+        intro_src = intro_sprites if intro_sprites.is_dir() else intro_bundled
+        intro_files = sorted(intro_src.glob("dragon*.sprite")) if intro_src.is_dir() else []
+        if len(intro_files) == 4:
+            (fsroot / "intro").mkdir(exist_ok=True)
+            for f in intro_files:
+                shutil.copy2(f, fsroot / "intro" / f.name)
         else:
-            log("  ! no libdragon_logo.sprite -- intro splash will be skipped")
+            log("  ! no intro/dragon1..4.sprite -- boot animation will be skipped")
 
         # any other loose files bundled for the DFS root
         for extra in sorted((HERE / "vendor" / "fs").glob("*")):
-            if extra.suffix != ".md" and extra.name != "libdragon_logo.sprite":
+            if extra.suffix != ".md" and extra.name != "intro":
                 shutil.copy2(extra, fsroot / extra.name)
 
         # 3-5. audio

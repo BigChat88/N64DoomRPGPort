@@ -1,7 +1,7 @@
 # --- build output ---
 core/build/
 core/filesystem/DoomRPG.zip
-core/filesystem/libdragon_logo.sprite
+core/filesystem/intro/
 core/filesystem/snd/
 core/filesystem/mus/
 output/*
