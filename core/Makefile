@@ -58,11 +58,18 @@ filesystem/DoomRPG.zip: $(BAR_SRC) tools/bar2zip.py tools/overlay_zip.py $(OVERL
 	python3 tools/overlay_zip.py $@ assets/overlay
 endif
 
-# libdragon splash logo -> RGBA16 sprite in the DragonFS image
-LOGO_SRC := libdragon/website/logo2.png
-filesystem/libdragon_logo.sprite: $(LOGO_SRC)
-	$(N64_MKSPRITE) -f RGBA16 -o filesystem $(LOGO_SRC)
-	mv filesystem/logo2.sprite $@
+# Boot "made with libdragon" dragon-logo animation, adapted from 64Doom's
+# src/i_intro.c (see PD_PlayIntro in src/port/pd_intro.c).  dragon1..4.png are
+# the four line-art layers (head, body, tail, wordmark); I8 matches how
+# pd_intro.c shades them: the grayscale value is used as both intensity and
+# alpha, so black areas are transparent and the line art is tinted via the RDP
+# prim color instead of carrying its own color.
+INTRO_SRC := $(wildcard assets/intro/dragon*.png)
+INTRO_SPRITES := $(INTRO_SRC:assets/intro/%.png=filesystem/intro/%.sprite)
+
+$(INTRO_SPRITES) &: $(INTRO_SRC)
+	@mkdir -p filesystem/intro
+	$(N64_MKSPRITE) -f I8 -o filesystem/intro $(INTRO_SRC)
 
 # Audio: drop pre-converted PCM WAVs named <resourceID>.wav in assets/snd/ and
 # they get packed as rom:/snd/<resourceID>.wav64 (VADPCM).  Nothing there yet
@@ -90,7 +97,7 @@ filesystem/mus/%.wav64: assets/sound-example/%.wav
 	$(N64_AUDIOCONV) --wav-compress 3 --wav-mono --wav-loop true -o $(dir $@) $<
 
 doomrpg.z64: $(BUILD_DIR)/doomrpg.dfs
-$(BUILD_DIR)/doomrpg.dfs: filesystem/DoomRPG.zip filesystem/libdragon_logo.sprite $(SFX_WAV64) $(MUS_WAV64) $(wildcard filesystem/*)
+$(BUILD_DIR)/doomrpg.dfs: filesystem/DoomRPG.zip $(INTRO_SPRITES) $(SFX_WAV64) $(MUS_WAV64) $(wildcard filesystem/*)
 $(BUILD_DIR)/doomrpg.elf: $(OBJS)
 
 # Engine-only build.  Produces build/doomrpg.elf.stripped + build/doomrpg.elf.sym

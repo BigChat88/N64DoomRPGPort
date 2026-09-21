@@ -45,10 +45,14 @@ int main(void)
 
     /* game boot ------------------------------------------------------- */
     Z_Init();
+
+    /* Owns its own display_init()/display_close(), at the same 320x240
+     * resolution SDL_InitVideo() brings up right after -- so must run before
+     * it, but there's no visible resize/flash handing off between the two. */
+    PD_PlayIntro();
+
     SDL_InitVideo();
     SDL_InitAudio();
-
-    PD_PlayIntro();
 
     debugf("main: openZipFile\n");
     openZipFile("DoomRPG.zip", &zipFile);

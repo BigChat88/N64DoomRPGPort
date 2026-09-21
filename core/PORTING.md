@@ -32,7 +32,8 @@ src/port/        the N64 backend
   pd_bmp.c             1/4/8/24/32-bit uncompressed BMP loader + surface/texture
   pd_input.c           N64 controller → AVK_* key events
   pd_sound.c           libdragon mixer + wav64 backend for the audio shims
-  pd_intro.c           libdragon logo splash before the game boots
+  pd_intro.c           "made with libdragon" dragon-logo animation before the
+                       game boots (ported from 64Doom's i_intro.c)
   pd_sys.c             SDL_Init/GetTicks/Delay/Log/MessageBox
   main.c               entry point (replaces Main.c)
 filesystem/      DragonFS image root — put the original DoomRPG.zip here

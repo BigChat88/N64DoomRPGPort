@@ -36,6 +36,7 @@ static int    s_music_loop_pending;
 static PD_Snd *s_music_cur;
 static PD_Snd *s_sfx_cur[MAX_SFX_CH];   /* what each SFX channel last played */
 static int     s_sfx_voices;            /* active SFX count sfx_rebalance() last applied */
+static int     s_music_voice;           /* MUSIC_CH playing state sfx_rebalance() last applied */
 
 /* --- per-level background music (streamed Opus from rom:/mus/<map>.wav64) --- */
 static wav64_t s_bgm;
@@ -186,7 +187,16 @@ static float sfx_gain(void)
  * ~1/sqrt(n): a lone sound stays at full level, four play at half each, which
  * keeps the summed peak roughly bounded without a per-sample limiter.  Cheap:
  * a 10-entry scan plus one mixer_ch_set_vol per active voice, and only when the
- * voice count actually changed (or `force`, for the volume slider). */
+ * voice count actually changed (or `force`, for the volume slider).
+ *
+ * MUSIC_CH (engine music, and the one-shot level-up stinger -- see
+ * PD_MusicStinger) is folded into the same headroom pool as an extra voice.
+ * It plays at full scale just like an SFX channel, and the two still hard-clip
+ * together even though neither one is "several SFX": a monster's death cry
+ * landing on the same frame as the level-up stinger it just triggered (via
+ * Player_addXP -> Sound_playLevelUpMusic) is exactly two full-scale voices
+ * summing.  That combination is reliable on the final boss, which always
+ * grants enough XP to level up on the kill that plays its death sound. */
 static void sfx_rebalance(int force)
 {
     int n = 0;
@@ -194,19 +204,32 @@ static void sfx_rebalance(int force)
         if (s_sfx_cur[c] && mixer_ch_playing(c)) n++;
         else s_sfx_cur[c] = NULL;            /* voice ended -- release the slot */
     }
-    if (!force && n == s_sfx_voices) return;
-    s_sfx_voices = n;
-    if (n == 0) return;
+    int music_on = mixer_ch_playing(MUSIC_CH) ? 1 : 0;
 
-    /* poly[n] ~= 1/sqrt(n), clamped so one or two voices are barely touched */
-    static const float poly[MAX_SFX_CH + 1] = {
+    if (!force && n == s_sfx_voices && music_on == s_music_voice) return;
+    s_sfx_voices  = n;
+    s_music_voice = music_on;
+
+    int total = n + music_on;
+    if (total == 0) return;
+
+    /* poly[n] ~= 1/sqrt(n), clamped so one or two voices are barely touched.
+     * Sized for MAX_SFX_CH SFX voices plus the MUSIC_CH voice (index 11). */
+    static const float poly[MAX_SFX_CH + 2] = {
         1.00f, 1.00f, 0.71f, 0.58f, 0.50f, 0.45f,
-        0.41f, 0.38f, 0.35f, 0.33f, 0.32f,
+        0.41f, 0.38f, 0.35f, 0.33f, 0.32f, 0.32f,
     };
-    float g = sfx_gain() * poly[n];
+    float gpoly = poly[total];
+
+    float g = sfx_gain() * gpoly;
     for (int c = 0; c < MAX_SFX_CH; c++)
         if (s_sfx_cur[c] && mixer_ch_playing(c))
             mixer_ch_set_vol(c, g, g);
+
+    if (music_on) {
+        float gm = s_music_gain * gpoly;
+        mixer_ch_set_vol(MUSIC_CH, gm, gm);
+    }
 }
 
 void PD_SfxPlay(int ch, void *handle, int loop)
@@ -267,7 +290,7 @@ void PD_MusicPlay(void *handle, int loop)
      * handle whose loop flag just changed would keep the previous setting */
     mixer_ch_stop(MUSIC_CH);
     mixer_ch_play(MUSIC_CH, &s->wav.wave);
-    mixer_ch_set_vol(MUSIC_CH, s_music_gain, s_music_gain);
+    sfx_rebalance(1);           /* sets MUSIC_CH's vol, ducked if SFX are live */
     s_music_cur = s;
 }
 
@@ -293,7 +316,7 @@ void PD_MusicSetGain(double gain_0_1)
     s_music_gain = (float)gain_0_1;
     if (!s_ready) return;
     if (s_music_cur && mixer_ch_playing(MUSIC_CH))
-        mixer_ch_set_vol(MUSIC_CH, s_music_gain, s_music_gain);
+        sfx_rebalance(1);       /* re-applies the new gain, ducked if needed */
     if (mixer_ch_playing(BGM_CH))
         mixer_ch_set_vol(BGM_CH, s_music_gain, s_music_gain);
 }
@@ -318,7 +341,9 @@ void PD_MusicStinger(void *handle)
      * stinger would never end.  Stop first so the config is re-read. */
     mixer_ch_stop(MUSIC_CH);
     mixer_ch_play(MUSIC_CH, &s->wav.wave);
-    mixer_ch_set_vol(MUSIC_CH, s_music_gain, s_music_gain);
+    sfx_rebalance(1);           /* sets MUSIC_CH's vol, ducked against live SFX
+                                  * -- e.g. the death cry that just triggered
+                                  * this same stinger via Player_addXP */
     s_music_cur = NULL;             /* not an engine fluid_player handle */
     s_stinger   = s;
 }
