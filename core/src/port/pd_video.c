@@ -101,10 +101,29 @@ static inline uint16_t rgb_to_5551(uint8_t r, uint8_t g, uint8_t b)
     return (uint16_t)(((r >> 3) << 11) | ((g >> 3) << 6) | ((b >> 3) << 1) | 1);
 }
 
+/* Bumped by our own VI handler, which fires on the same vblank interrupt that
+ * libdragon uses to flip buffers. */
+static volatile uint32_t s_vblanks;
+
+static void vblank_tick(void) { s_vblanks++; }
+
+/* Every frame starts with SDL_RenderClear, i.e. a top-down black fill.  If no
+ * buffer is free, display_get() returns the one the VI flip has *just*
+ * released -- and the game would start blanking it straight away.  Real VI
+ * scanout is done with it by then, but ares (paraLLEl-RDP) scans out
+ * asynchronously and can still be reading that buffer, so the half-cleared
+ * frame shows up as a black band of varying height at the top of the screen.
+ * With 3 buffers this only happens when the game outruns the display (two
+ * frames already queued), so idling one more field there costs no throughput. */
 static void ensure_frame(void)
 {
     if (!s_fb) {
-        s_fb = display_get();
+        s_fb = display_try_get();
+        if (!s_fb) {
+            s_fb = display_get();
+            uint32_t v = s_vblanks;
+            while (s_vblanks == v) { /* let the released buffer age a field */ }
+        }
     }
 }
 
@@ -148,8 +167,11 @@ void SDL_InitVideo(void)
 
     /* The N64 VI only really wants the standard modes; force 320x240.
      * libdragon requires FILTERS_RESAMPLE (not FILTERS_DISABLED) for any
-     * width <= 320 -- the VI cannot scan out a 320-wide buffer unfiltered. */
-    display_init(RESOLUTION_320x240, DEPTH_16_BPP, 2, GAMMA_NONE, FILTERS_RESAMPLE);
+     * width <= 320 -- the VI cannot scan out a 320-wide buffer unfiltered.
+     * Triple-buffered: see ensure_frame() for why a just-released buffer
+     * must not be reused immediately. */
+    display_init(RESOLUTION_320x240, DEPTH_16_BPP, 3, GAMMA_NONE, FILTERS_RESAMPLE);
+    register_VI_handler(vblank_tick);
 
     sdlVideo.renderer  = RENDERER_TOKEN;
     sdlVideo.rendererW = SCREEN_W;
@@ -170,7 +192,11 @@ void SDL_InitVideo(void)
 void SDL_Close(void)
 {
     if (s_fb) { display_show(s_fb); s_fb = NULL; }
-    if (s_initialized) { display_close(); s_initialized = 0; }
+    if (s_initialized) {
+        unregister_VI_handler(vblank_tick);
+        display_close();
+        s_initialized = 0;
+    }
 }
 
 /* ------------------------------------------------------------ fatal message
