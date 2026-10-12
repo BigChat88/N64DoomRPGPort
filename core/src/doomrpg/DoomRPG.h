@@ -261,8 +261,20 @@ typedef struct Image_s
 
 //extern DoomRPG_t *doomRpg;
 
-fixed_t	DoomRPG_FixedMul(fixed_t a, fixed_t b);
-fixed_t	DoomRPG_FixedDiv(fixed_t a, fixed_t b);
+// [n64 port] Inline: the renderer calls these per wall/sprite column and per
+// vertex from Render.c, and as out-of-line functions in DoomRPG.c every call
+// paid a full call/return (no LTO).  Same math as the original C versions.
+static inline fixed_t DoomRPG_FixedMul(fixed_t a, fixed_t b)
+{
+	return (fixed_t)((int64_t)a * b >> FRACBITS);
+}
+
+// FixedDiv, C version (CALICO: rewritten to use PC version)
+static inline fixed_t DoomRPG_FixedDiv(fixed_t a, fixed_t b)
+{
+	return (ABS(a) >> 14) >= ABS(b) ? ((a ^ b) >> 31) ^ MAXINT :
+		(fixed_t)(((int64_t)a << FRACBITS) / b);
+}
 fixed_t	DoomRPG_FixedDiv2(fixed_t a, fixed_t b);
 
 void DoomRPG_Error(const char* fmt, ...);

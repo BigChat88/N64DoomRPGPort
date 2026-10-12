@@ -92,26 +92,7 @@ void DoomRPG_Error(const char* fmt, ...) // 0x1C648
 // Fixme. __USE_C_FIXED__ or something.
 //
 
-fixed_t	DoomRPG_FixedMul(fixed_t a, fixed_t b)
-{
-	return (fixed_t)((int64_t)a * b >> FRACBITS);
-	//return ((long long)a * (long long)b) >> FRACBITS;
-}
-
-//
-// FixedDiv, C version.
-//
-
-fixed_t	DoomRPG_FixedDiv(fixed_t a, fixed_t b)
-{
-	// CALICO: rewritten to use PC version
-	return (ABS(a) >> 14) >= ABS(b) ? ((a ^ b) >> 31) ^ MAXINT :
-		(fixed_t)(((int64_t)a << FRACBITS) / b);
-
-	//if ((abs(a) >> 14) >= abs(b))
-		//return (a ^ b) < 0 ? MININT : MAXINT;
-	//return DoomRPG_FixedDiv2(a, b);
-}
+// DoomRPG_FixedMul / DoomRPG_FixedDiv are static inline in DoomRPG.h.
 
 /*
 fixed_t	DoomRPG_FixedDiv2(fixed_t a, fixed_t b)
