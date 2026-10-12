@@ -85,16 +85,17 @@ filesystem/snd/%.wav64: assets/snd/%.wav
 # map, mixed on its own channel by pd_sound.c.  <map> matches the .bsp basenames
 # (intro, junction, junction_destroyed, level01..level07, reactor).
 #
-# Source WAVs live in assets/sound-example/ -- hand-trimmed 48 kHz mono loops,
-# already edited so the loop seam sounds clean.  They are used as-is: audioconv64
-# only Opus-compresses and marks the whole file as looping, it does NOT trim them.
-# (tools/ost_setup.sh is the old ffmpeg auto-cut path and is no longer used.)
-MUS_WAV   := $(wildcard assets/sound-example/*.wav)
-MUS_WAV64 := $(MUS_WAV:assets/sound-example/%.wav=filesystem/mus/%.wav64)
+# The committed assets/music/*.wav64 are already processed (24 kHz mono Opus,
+# looping) by the host-side tools/process_music.py from the hand-trimmed source
+# loops in assets/sound-example/*.wav -- which are git-ignored (~118 MB) and not
+# needed to build.  Here they are just copied.  Re-run process_music.py when a
+# source loop changes or the libdragon submodule moves (wav64 format).
+MUS_SRC   := $(wildcard assets/music/*.wav64)
+MUS_WAV64 := $(MUS_SRC:assets/music/%=filesystem/mus/%)
 
-filesystem/mus/%.wav64: assets/sound-example/%.wav
+filesystem/mus/%.wav64: assets/music/%.wav64
 	@mkdir -p $(dir $@)
-	$(N64_AUDIOCONV) --wav-compress 3 --wav-mono --wav-loop true -o $(dir $@) $<
+	cp $< $@
 
 doomrpg.z64: $(BUILD_DIR)/doomrpg.dfs
 $(BUILD_DIR)/doomrpg.dfs: filesystem/DoomRPG.zip $(INTRO_SPRITES) $(SFX_WAV64) $(MUS_WAV64) $(wildcard filesystem/*)

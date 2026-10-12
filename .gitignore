@@ -27,6 +27,9 @@ doomrpg.zip
 DoomRPG.zip
 core/assets/snd/
 core/assets/mus/
+# per-level music source loops: only their processed form, core/assets/music/
+# *.wav64, is committed (see core/tools/process_music.py)
+core/assets/sound-example/
 core/assets/doomOST/
 core/assets/snd-java/
 core/tools/classes/

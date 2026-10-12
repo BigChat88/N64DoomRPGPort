@@ -21,7 +21,7 @@ no arguments.
 | libdragon host tools | `app/vendor/bin/`, `$N64_INST/bin`, or PATH |
 | `BarToZip.exe` | `core/tools/bartozip/` (ships with the DoomRPG-RE release) |
 | a `.sf2` for the 3 MIDI tracks | first `*.sf2` in `core/tools/soundfont/`, or `--soundfont`; needs fluidsynth + ffmpeg |
-| per-level music WAVs | `core/assets/sound-example/*.wav`, or `--bgm-dir <dir>` |
+| per-level music | pre-processed `core/assets/music/*.wav64` (see `core/tools/process_music.py`), or `--bgm-dir <dir>` of `.wav64`/`.wav` |
 
 The output goes to `../output/doomrpg.z64` unless `--out` says otherwise.
 

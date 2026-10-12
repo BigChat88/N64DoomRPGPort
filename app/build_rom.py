@@ -16,7 +16,8 @@ Pipeline (mirrors core/Makefile):
     3. BarToZip.exe       doomrpg.bar        -> <id>.wav / <id>.mid   (audio)
     4. (optional) FluidSynth+ffmpeg  <id>.mid -> <id>.wav            (engine music)
     5. audioconv64        snd/*.wav          -> snd/*.wav64
-       audioconv64        <bgm>/*.wav        -> mus/*.wav64           (optional)
+       core/assets/music/*.wav64 (pre-processed, see core/tools/process_music.py)
+                                             -> mus/*.wav64           (copied)
     6. mkdfs              <fs tree>          -> doomrpg.dfs
     7. n64tool --toc      elf + sym + dfs    -> doomrpg.z64
     8. ed64romconfig      --savetype ...     stamp the homebrew header
@@ -255,10 +256,11 @@ def main() -> None:
                          "Default: first .sf2 in core/tools/soundfont/, else "
                          "no engine music.")
     ap.add_argument("--bgm-dir", type=Path,
-                    help="dir of <map>.wav files for streamed per-level music "
-                         "(intro, junction, junction_destroyed, level01..07, "
-                         "reactor).  Default: core/assets/sound-example/ if it "
-                         "has .wav files, else no per-level music.")
+                    help="dir of <map>.wav64 (copied) or <map>.wav (converted "
+                         "with audioconv64; 24 or 48 kHz mono) files for "
+                         "streamed per-level music (intro, junction, "
+                         "junction_destroyed, level01..07, reactor).  Default: "
+                         "the pre-processed core/assets/music/*.wav64.")
     ap.add_argument("--no-audio", action="store_true",
                     help="skip all audio (SFX + music); build a silent ROM fast")
     ap.add_argument("--keep-work", action="store_true",
@@ -362,9 +364,9 @@ def main() -> None:
             log(f"      {n} sfx -> wav64")
             bgm_dir = args.bgm_dir
             if bgm_dir is None:
-                # auto: streamed per-level loops in core/assets/sound-example/
-                auto = CORE / "assets" / "sound-example"
-                if auto.is_dir() and any(auto.glob("*.wav")):
+                # auto: the committed, pre-processed per-level loops
+                auto = CORE / "assets" / "music"
+                if auto.is_dir() and any(auto.glob("*.wav64")):
                     bgm_dir = auto
                     log(f"      auto per-level music: {bgm_dir}")
             if bgm_dir:
@@ -372,9 +374,13 @@ def main() -> None:
                     die(f"{bgm_dir}: not a directory")
                 mus_out = fsroot / "mus"
                 mus_out.mkdir()
-                n = audioconv_dir(tools["audioconv64"], bgm_dir, mus_out,
-                                  ["--wav-compress", "3", "--wav-mono",
-                                   "--wav-loop", "true"])
+                n = 0
+                for w64 in sorted(bgm_dir.glob("*.wav64")):
+                    shutil.copy2(w64, mus_out / w64.name)
+                    n += 1
+                n += audioconv_dir(tools["audioconv64"], bgm_dir, mus_out,
+                                   ["--wav-compress", "3", "--wav-mono",
+                                    "--wav-loop", "true"])
                 log(f"      {n} music -> wav64")
 
         # 6. DragonFS image
