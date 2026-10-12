@@ -5,7 +5,7 @@ process_music.py -- turn the per-level music loops into the committed .wav64s.
 The hand-trimmed source loops (assets/sound-example/<map>.wav, ~118 MB of
 48 kHz PCM) are NOT committed: they are git-ignored, kept only by whoever
 edits the music.  What the repo ships is their processed form,
-assets/music/<map>.wav64 (~8 MB of streamed Opus), which core/Makefile and
+assets/music/<map>.wav64 (~5 MB of streamed Opus), which core/Makefile and
 app/build_rom.py copy into rom:/mus/ as-is -- so building a ROM needs neither
 the WAVs nor ffmpeg.
 
@@ -13,21 +13,28 @@ Same idea as N64DoomPort's tools/render_music.py: process the music once,
 host-side, then let the build just pack the result.  Per track:
 
     ffmpeg       <map>.wav -> mono, OUTPUT_RATE Hz PCM      (temp file)
+    truncate     to a whole number of Opus frames           (see below)
     audioconv64  --wav-compress 3 --wav-mono --wav-loop true -> <map>.wav64
 
-48000 Hz: an Opus native rate, so audioconv64 never resamples (its internal
-resampler is what broke the loop point in N64DoomPort).  24 kHz would be about
-a third smaller, but on the libdragon preview branch it crashed on real
-hardware ("opus decode error: invalid argument" in waveform_opus_read): 48 kHz
-uses one of Opus' static modes, while 24 kHz makes the runtime build and free
-a custom mode per track.  Keep 48 kHz unless that is fixed upstream.  The N64
-mixer runs at 44.1 kHz either way (pd_sound.c SND_FREQ).
+Whole Opus frames: audioconv64 encodes Opus in fixed frames of rate/50
+samples (20 ms), and libdragon's waveform_opus_read decodes whole frames with
+no handling for a file that ends mid-frame.  A track whose length is not a
+multiple of the frame size crashes on real hardware the moment it loops:
+"opus decode error: invalid argument" (err > 0).  N64DoomPort hit and fixed
+the same thing (its render_music.py truncate_to_frame_boundary); none of our
+hand-trimmed loops happened to be aligned.  The cut is under 20 ms.
+
+24000 Hz: one of Opus' native rates, so audioconv64 never resamples (its
+internal resampler is what broke the loop point in N64DoomPort), and
+audioconv64 derives the Opus bitrate from the sample rate, so 24 kHz halves
+the size and the decode cost.  N64DoomPort ships 24 kHz on the same
+libdragon.  The N64 mixer runs at 44.1 kHz either way (pd_sound.c SND_FREQ).
 
 The .wav64 layout belongs to the libdragon revision in core/libdragon: re-run
 this whenever the submodule moves, or when a source loop changes.
 
     python tools/process_music.py                    # sound-example/ -> music/
-    python tools/process_music.py --rate 24000       # smaller -- see above first
+    python tools/process_music.py --rate 48000       # full-rate (about 1.5x bigger)
     python tools/process_music.py --src DIR --out DIR --tools-dir DIR
 """
 from __future__ import annotations
@@ -38,13 +45,30 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import wave
 from pathlib import Path
 
 CORE = Path(__file__).resolve().parent.parent
 ROOT = CORE.parent
 
-OUTPUT_RATE = 48000
+OUTPUT_RATE = 24000
 AUDIOCONV_FLAGS = ["--wav-compress", "3", "--wav-mono", "--wav-loop", "true"]
+
+
+def truncate_to_opus_frames(path: Path, rate: int) -> int:
+    """Cut a PCM WAV down to a whole number of Opus frames (rate/50 samples).
+
+    Returns how many samples were dropped.  See the module docstring for why.
+    """
+    frame = rate // 50
+    with wave.open(str(path), "rb") as r:
+        params = r.getparams()
+        keep = params.nframes - params.nframes % frame
+        data = r.readframes(keep)
+    with wave.open(str(path), "wb") as w:
+        w.setparams(params)
+        w.writeframes(data)
+    return params.nframes - keep
 
 
 def die(msg: str):
@@ -103,6 +127,7 @@ def main() -> None:
             subprocess.run([ffmpeg, "-nostdin", "-hide_banner", "-loglevel", "error", "-y",
                             "-i", str(wav), "-ac", "1", "-ar", str(args.rate), str(pcm)],
                            check=True)
+            dropped = truncate_to_opus_frames(pcm, args.rate)
             # audioconv64's `-o <dir> <file>` mode splits the basename on '/'
             # only, so pass the bare filename with cwd set (see build_rom.py).
             subprocess.run([str(audioconv), *AUDIOCONV_FLAGS, "-o", str(args.out.resolve()),
@@ -111,7 +136,7 @@ def main() -> None:
             if not w64.is_file():
                 die(f"audioconv64 produced no {w64.name} from {wav.name}")
             print(f"  [MUS] {wav.stem:20s} {wav.stat().st_size / 1e6:6.1f} MB -> "
-                  f"{w64.stat().st_size / 1e6:5.2f} MB")
+                  f"{w64.stat().st_size / 1e6:5.2f} MB  (-{dropped} samples to frame boundary)")
 
     total = sum(f.stat().st_size for f in args.out.glob("*.wav64"))
     print(f"done: {len(wavs)} track(s) -> {args.out}  ({total / 1e6:.1f} MB)")

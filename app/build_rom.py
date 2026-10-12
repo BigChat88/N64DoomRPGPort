@@ -35,6 +35,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import wave
 import zipfile
 from pathlib import Path
 
@@ -203,6 +204,35 @@ def audioconv_dir(tool: Path, wav_dir: Path, out_dir: Path, flags: list[str]) ->
             die(f"audioconv64 produced no {w64.name} from {wav.name}")
         n += 1
     return n
+
+
+OPUS_RATES = (8000, 12000, 16000, 24000, 48000)
+
+
+def frame_align_loops(src_dir: Path, dst_dir: Path) -> Path:
+    """Copy src_dir/*.wav to dst_dir cut to whole Opus frames (rate/50 samples).
+
+    libdragon's Opus reader cannot handle a looping file that ends mid-frame:
+    it asserts "opus decode error: invalid argument" when the track wraps (see
+    core/tools/process_music.py).  Only exact for Opus-native rates; any other
+    rate is resampled inside audioconv64, so it is copied as-is with a warning.
+    """
+    dst_dir.mkdir(parents=True, exist_ok=True)
+    for src in sorted(src_dir.glob("*.wav")):
+        dst = dst_dir / src.name
+        with wave.open(str(src), "rb") as r:
+            params = r.getparams()
+            if params.framerate not in OPUS_RATES:
+                log(f"  ! {src.name}: {params.framerate} Hz is not an Opus rate; "
+                    f"its loop may crash -- prepare it with core/tools/process_music.py")
+                shutil.copy2(src, dst)
+                continue
+            frame = params.framerate // 50
+            data = r.readframes(params.nframes - params.nframes % frame)
+        with wave.open(str(dst), "wb") as w:
+            w.setparams(params)
+            w.writeframes(data)
+    return dst_dir
 
 
 def render_engine_music(mid_dir: Path, snd_wav_dir: Path, soundfont: Path,
@@ -376,7 +406,8 @@ def main() -> None:
                 for w64 in sorted(bgm_dir.glob("*.wav64")):
                     shutil.copy2(w64, mus_out / w64.name)
                     n += 1
-                n += audioconv_dir(tools["audioconv64"], bgm_dir, mus_out,
+                n += audioconv_dir(tools["audioconv64"],
+                                   frame_align_loops(bgm_dir, work / "bgm_wav"), mus_out,
                                    ["--wav-compress", "3", "--wav-mono",
                                     "--wav-loop", "true"])
                 log(f"      {n} music -> wav64")

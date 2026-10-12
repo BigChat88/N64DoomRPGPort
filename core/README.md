@@ -34,7 +34,7 @@ core/
     ├── overlay/{n64pad,aboutbg}.bmp   the port's own Help/About screens
     ├── {n64pad,aboutbg}_src.png       their high-res sources
     ├── intro/dragon*.png              boot-logo animation layers
-    └── music/<map>.wav64              per-level music, already processed (48 kHz Opus)
+    └── music/<map>.wav64              per-level music, already processed (24 kHz Opus)
 ```
 
 ## Build
