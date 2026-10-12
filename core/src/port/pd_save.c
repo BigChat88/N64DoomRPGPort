@@ -60,7 +60,7 @@ static void sram_bus_timing(void)
     PI_DOM2_RLS_REG = 0x02;
 }
 
-static void sram_read(uint32_t off, void *dst, uint32_t len)
+static void sram_dma_read(uint32_t off, void *dst, uint32_t len)
 {
     data_cache_hit_writeback_invalidate(dst, len);
     dma_read_raw_async(dst, SRAM_ADDR + off, len);
@@ -68,7 +68,7 @@ static void sram_read(uint32_t off, void *dst, uint32_t len)
     data_cache_hit_invalidate(dst, len);
 }
 
-static void sram_write(uint32_t off, const void *src, uint32_t len)
+static void sram_dma_write(uint32_t off, const void *src, uint32_t len)
 {
     data_cache_hit_writeback_invalidate((void *)src, len);
     dma_write_raw_async(src, SRAM_ADDR + off, len);
@@ -125,9 +125,9 @@ static int store_flush(void)
     if (g_save_state == SAVE_ABSENT)
         return 0;
 
-    sram_write(0, g_shadow, SRAM_SIZE);
+    sram_dma_write(0, g_shadow, SRAM_SIZE);
 
-    sram_read(0, g_verify, SRAM_SIZE);
+    sram_dma_read(0, g_verify, SRAM_SIZE);
     if (memcmp(g_verify, g_shadow, SRAM_SIZE) != 0) {
         debugf("[pd_save] SRAM write did not persist\n");
         if (g_save_state != SAVE_PRESENT)   /* never proven to work -> give up */
@@ -219,7 +219,7 @@ void PD_SaveInit(void)
 {
     sram_bus_timing();
 
-    sram_read(0, g_shadow, SRAM_SIZE);
+    sram_dma_read(0, g_shadow, SRAM_SIZE);
 
     if (memcmp(store_dir()->magic, STORE_MAGIC, 8) == 0) {
         g_save_state = SAVE_PRESENT;      /* our header is already on the cart */

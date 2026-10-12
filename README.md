@@ -81,7 +81,7 @@ reverse-engineered source port of *Doom RPG*. This project vendors that engine
 (upstream `8ff35da`, GPL-3.0) essentially unmodified and simply gives it a
 Nintendo 64 backend; without that work none of this would exist.
 
-Thanks also to the **[libdragon](https://github.com/DragonMinded/libdragon)**
+Thanks also to the **[libdragon](https://github.com/n64brew/libdragon)**
 team for the open-source N64 SDK, and to id Software / JAMDAT / EA for the
 original 2005 game.
 

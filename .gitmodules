@@ -1,4 +1,4 @@
 [submodule "libdragon"]
 	path = core/libdragon
-	url = https://github.com/DragonMinded/libdragon
-	branch = trunk
+	url = https://github.com/n64brew/libdragon
+	branch = preview
