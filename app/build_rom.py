@@ -32,12 +32,10 @@ import argparse
 import io
 import os
 import shutil
-import struct
 import subprocess
 import sys
 import tempfile
 import zipfile
-import zlib
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
