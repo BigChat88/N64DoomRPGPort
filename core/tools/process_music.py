@@ -5,7 +5,7 @@ process_music.py -- turn the per-level music loops into the committed .wav64s.
 The hand-trimmed source loops (assets/sound-example/<map>.wav, ~118 MB of
 48 kHz PCM) are NOT committed: they are git-ignored, kept only by whoever
 edits the music.  What the repo ships is their processed form,
-assets/music/<map>.wav64 (~5 MB of streamed Opus), which core/Makefile and
+assets/music/<map>.wav64 (~8 MB of streamed Opus), which core/Makefile and
 app/build_rom.py copy into rom:/mus/ as-is -- so building a ROM needs neither
 the WAVs nor ffmpeg.
 
@@ -15,17 +15,19 @@ host-side, then let the build just pack the result.  Per track:
     ffmpeg       <map>.wav -> mono, OUTPUT_RATE Hz PCM      (temp file)
     audioconv64  --wav-compress 3 --wav-mono --wav-loop true -> <map>.wav64
 
-24000 Hz, not the source 48000: it is one of Opus' native rates, so
-audioconv64 never resamples (its internal resampler is what broke the loop
-point in N64DoomPort), and audioconv64 derives the Opus bitrate from the
-sample rate, so 24 kHz halves the size and the decode cost.  The N64 mixer
-runs at 44.1 kHz either way (pd_sound.c SND_FREQ).
+48000 Hz: an Opus native rate, so audioconv64 never resamples (its internal
+resampler is what broke the loop point in N64DoomPort).  24 kHz would be about
+a third smaller, but on the libdragon preview branch it crashed on real
+hardware ("opus decode error: invalid argument" in waveform_opus_read): 48 kHz
+uses one of Opus' static modes, while 24 kHz makes the runtime build and free
+a custom mode per track.  Keep 48 kHz unless that is fixed upstream.  The N64
+mixer runs at 44.1 kHz either way (pd_sound.c SND_FREQ).
 
 The .wav64 layout belongs to the libdragon revision in core/libdragon: re-run
 this whenever the submodule moves, or when a source loop changes.
 
     python tools/process_music.py                    # sound-example/ -> music/
-    python tools/process_music.py --rate 48000       # full-rate (about 1.5x bigger)
+    python tools/process_music.py --rate 24000       # smaller -- see above first
     python tools/process_music.py --src DIR --out DIR --tools-dir DIR
 """
 from __future__ import annotations
@@ -41,7 +43,7 @@ from pathlib import Path
 CORE = Path(__file__).resolve().parent.parent
 ROOT = CORE.parent
 
-OUTPUT_RATE = 24000
+OUTPUT_RATE = 48000
 AUDIOCONV_FLAGS = ["--wav-compress", "3", "--wav-mono", "--wav-loop", "true"]
 
 

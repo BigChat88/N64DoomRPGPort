@@ -85,7 +85,7 @@ filesystem/snd/%.wav64: assets/snd/%.wav
 # map, mixed on its own channel by pd_sound.c.  <map> matches the .bsp basenames
 # (intro, junction, junction_destroyed, level01..level07, reactor).
 #
-# The committed assets/music/*.wav64 are already processed (24 kHz mono Opus,
+# The committed assets/music/*.wav64 are already processed (48 kHz mono Opus,
 # looping) by the host-side tools/process_music.py from the hand-trimmed source
 # loops in assets/sound-example/*.wav -- which are git-ignored (~118 MB) and not
 # needed to build.  Here they are just copied.  Re-run process_music.py when a
