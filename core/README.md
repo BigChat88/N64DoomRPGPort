@@ -27,12 +27,14 @@ core/
 │   ├── overlay_zip.py         fold core/assets/overlay/*.bmp into DoomRPG.zip
 │   ├── overlay_png.sh         regenerate the overlay BMPs from *_src.png
 │   ├── audio_setup.sh         BarToZip.exe -> assets/snd/*.wav (+ MIDI music)
-│   ├── ost_setup.sh           per-level music WAVs from source tracks
+│   ├── process_music.py       assets/sound-example/*.wav -> assets/music/*.wav64
 │   ├── bartozip/              BarToZip.exe + zlib.dll (from the DoomRPG-RE release, GPL-3.0)
-│   └── soundfont/             (empty) put a General MIDI .sf2 here for the MIDI music path
+│   └── soundfont/             the General MIDI .sf2 the 3 MIDI themes are rendered with
 └── assets/
     ├── overlay/{n64pad,aboutbg}.bmp   the port's own Help/About screens
-    └── {n64pad,aboutbg}_src.png       their high-res sources
+    ├── {n64pad,aboutbg}_src.png       their high-res sources
+    ├── intro/dragon*.png              boot-logo animation layers
+    └── music/<map>.wav64              per-level music, already processed (24 kHz Opus)
 ```
 
 ## Build

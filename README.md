@@ -30,8 +30,20 @@ builder fails early with a clear message if the file is not a Doom RPG `.bar`.
 
 * **Python 3.8+** on your `PATH` (`python --version`).
 * **Your own `doomrpg.zip`** (or `doomrpg.bar`) — see the section above.
-* **`ffmpeg`** and **`fluidsynth`** on your `PATH`. They render the three BREW
-  MIDI tracks (intro / menu / in-game) into the ROM.
+* **Linux / macOS only:** `wine`, to run the bundled `BarToZip.exe` that
+  decodes the game's sound effects. Windows needs nothing extra.
+
+That is enough for a complete ROM with sound effects and the streamed
+per-level music (it ships in the repo already processed, so it needs no
+extra tools).
+
+### Optional: `ffmpeg` + `fluidsynth`
+
+With both on your `PATH`, the build also renders the game's own three MIDI
+themes (intro / main menu / in-game; the last one also plays on level-up) using the
+bundled SoundFont. Without them the build still succeeds; it prints
+`fluidsynth/ffmpeg not on PATH -- skipping engine MIDI music` and those
+themes are silent.
 
 ### Installing FFmpeg on Windows
 
