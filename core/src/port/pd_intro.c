@@ -26,6 +26,7 @@
  * dragon roar risked the two audio paths fighting over the AI hardware.
  */
 #include <libdragon.h>
+#include <math.h>
 
 #define SCREEN_W 320
 #define SCREEN_H 240
@@ -43,6 +44,15 @@
 #define SYF(v) ((v)*INTRO_SCALE)
 #define SX(v) ((int)SXF(v))
 #define SY(v) ((int)SYF(v))
+
+/* The easing below was tuned as "lose k of the remaining distance per frame"
+ * at 60 fields/s.  Scale it by the real elapsed time so the animation runs at
+ * the same speed when frames are dropped or the emulator paces differently. */
+static float ease(float v, float k, float steps, float snap)
+{
+    v *= powf(1.0f - k, steps);
+    return (v < snap) ? 0.0f : v;
+}
 
 void PD_PlayIntro(void)
 {
@@ -74,28 +84,13 @@ void PD_PlayIntro(void)
 
     rdpq_init();
 
-    float angle1=0, angle2=0, angle3=0;
-    float scale1=0, scale2=0, scale3=0, scroll4=0;
-    uint32_t ms0=0;
-    int anim_part=0;
+    float angle1 = 3.2f, angle2 = 1.9f, angle3 = 0.9f;
+    float scale1 = 0.0f, scale2 = 0.4f, scale3 = 0.8f, scroll4 = 400;
+    uint32_t ms0 = get_ticks_ms(), ms_prev = ms0;
+    int anim_part = 0;
     /* translation offset of the animation (simplify centering) */
     const int X0 = 10, Y0 = 30;
 
-    void reset(void)
-    {
-        ms0 = get_ticks_ms();
-        anim_part = 0;
-
-        angle1 = 3.2f;
-        angle2 = 1.9f;
-        angle3 = 0.9f;
-        scale1 = 0.0f;
-        scale2 = 0.4f;
-        scale3 = 0.8f;
-        scroll4 = 400;
-    }
-
-    reset();
     while (1)
     {
         /* Calculate animation part:
@@ -103,7 +98,10 @@ void PD_PlayIntro(void)
          * 1: rotate dragon body and tail, scale up
          * 2: scroll dragon logo
          * 3: fade out */
-        uint32_t tt = get_ticks_ms() - ms0;
+        uint32_t now = get_ticks_ms();
+        uint32_t tt = now - ms0;
+        float steps = (float)(now - ms_prev) * (60.0f / 1000.0f);
+        ms_prev = now;
         if (tt < 1000) anim_part = 0;
         else if (tt < 1500) anim_part = 1;
         else if (tt < 4000) anim_part = 2;
@@ -111,17 +109,17 @@ void PD_PlayIntro(void)
         else break;
 
         /* Update animation parameters using quadratic ease-out */
-        angle1 -= angle1 * 0.04f; if (angle1 < 0.010f) angle1 = 0;
+        angle1 = ease(angle1, 0.04f, steps, 0.010f);
         if (anim_part >= 1)
         {
-            angle2 -= angle2 * 0.06f; if (angle2 < 0.01f) angle2 = 0;
-            angle3 -= angle3 * 0.06f; if (angle3 < 0.01f) angle3 = 0;
-            scale2 -= scale2 * 0.06f; if (scale2 < 0.01f) scale2 = 0;
-            scale3 -= scale3 * 0.06f; if (scale3 < 0.01f) scale3 = 0;
+            angle2 = ease(angle2, 0.06f, steps, 0.01f);
+            angle3 = ease(angle3, 0.06f, steps, 0.01f);
+            scale2 = ease(scale2, 0.06f, steps, 0.01f);
+            scale3 = ease(scale3, 0.06f, steps, 0.01f);
         }
         if (anim_part >= 2)
         {
-            scroll4 -= scroll4 * 0.08f;
+            scroll4 = ease(scroll4, 0.08f, steps, 0.0f);
         }
 
         /* Update colors for fade out effect */

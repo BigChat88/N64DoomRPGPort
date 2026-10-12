@@ -92,26 +92,7 @@ void DoomRPG_Error(const char* fmt, ...) // 0x1C648
 // Fixme. __USE_C_FIXED__ or something.
 //
 
-fixed_t	DoomRPG_FixedMul(fixed_t a, fixed_t b)
-{
-	return (fixed_t)((int64_t)a * b >> FRACBITS);
-	//return ((long long)a * (long long)b) >> FRACBITS;
-}
-
-//
-// FixedDiv, C version.
-//
-
-fixed_t	DoomRPG_FixedDiv(fixed_t a, fixed_t b)
-{
-	// CALICO: rewritten to use PC version
-	return (ABS(a) >> 14) >= ABS(b) ? ((a ^ b) >> 31) ^ MAXINT :
-		(fixed_t)(((int64_t)a << FRACBITS) / b);
-
-	//if ((abs(a) >> 14) >= abs(b))
-		//return (a ^ b) < 0 ? MININT : MAXINT;
-	//return DoomRPG_FixedDiv2(a, b);
-}
+// DoomRPG_FixedMul / DoomRPG_FixedDiv are static inline in DoomRPG.h.
 
 /*
 fixed_t	DoomRPG_FixedDiv2(fixed_t a, fixed_t b)
@@ -419,7 +400,7 @@ static void setBind(int* keyBinds, int keycode)
 
 // New Function
 void DoomRPG_setBind(DoomRPG_t* doomrpg, int mouse_Button, const Uint8* state) {
-	int i, keyMapId, buttomID;
+	int i, keyMapId, buttomID = -1;
 
 	// KeyBoard
 	{
@@ -1193,7 +1174,7 @@ void File_writeLong(SDL_RWops* rw, int i)
 
 boolean File_readBoolean(SDL_RWops* rw)
 {
-	char boolData;
+	char boolData = 0;
 
 	if (rw) {
 		SDL_RWread(rw, &boolData, sizeof(byte), 1);
@@ -1204,7 +1185,7 @@ boolean File_readBoolean(SDL_RWops* rw)
 
 int File_readByte(SDL_RWops* rw)
 {
-	char bData;
+	char bData = 0;
 
 	if (rw) {
 		SDL_RWread(rw, &bData, sizeof(byte), 1);
@@ -1215,7 +1196,7 @@ int File_readByte(SDL_RWops* rw)
 
 int File_readShort(SDL_RWops* rw)
 {
-	short sData;
+	short sData = 0;
 
 	if (rw) {
 		SDL_RWread(rw, &sData, sizeof(short), 1);
@@ -1226,7 +1207,7 @@ int File_readShort(SDL_RWops* rw)
 
 int File_readInt(SDL_RWops* rw)
 {
-	int iData;
+	int iData = 0;
 
 	if (rw) {
 		SDL_RWread(rw, &iData, sizeof(int), 1);
@@ -1237,7 +1218,7 @@ int File_readInt(SDL_RWops* rw)
 
 int File_readLong(SDL_RWops* rw)
 {
-	long lData;
+	long lData = 0;
 
 	if (rw) {
 		SDL_RWread(rw, &lData, sizeof(long), 1);

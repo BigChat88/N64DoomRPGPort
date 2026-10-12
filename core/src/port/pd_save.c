@@ -30,15 +30,10 @@
 
 /* --------------------------------------------------------------- SRAM driver */
 
-#define SRAM_ADDR    0x08000000u
+/* libdragon's sram.h (sram_init / sram_read / sram_write) programs the PI
+ * domain 2 bus timing and does the cache-safe PI DMA; it replaced the
+ * hand-rolled register code this file used to carry. */
 #define SRAM_SIZE    32768u          /* 256 kbit -- the universally-mapped size */
-
-/* PI domain 2 (SRAM/FlashRAM) bus-timing registers. */
-#define PI_STATUS_REG    (*(volatile uint32_t *)0xA4600010)
-#define PI_DOM2_LAT_REG  (*(volatile uint32_t *)0xA4600024)
-#define PI_DOM2_PWD_REG  (*(volatile uint32_t *)0xA4600028)
-#define PI_DOM2_PGS_REG  (*(volatile uint32_t *)0xA460002C)
-#define PI_DOM2_RLS_REG  (*(volatile uint32_t *)0xA4600030)
 
 /* Save-memory availability.  UNKNOWN means nothing has been written yet; the
  * first flush reads its own write back and settles this to PRESENT or ABSENT
@@ -50,30 +45,6 @@ static int g_save_state = SAVE_UNKNOWN;
 /* DMA endpoints must be 8-byte aligned; 16 keeps whole cache lines clear. */
 static uint8_t g_shadow[SRAM_SIZE]  __attribute__((aligned(16)));
 static uint8_t g_verify[SRAM_SIZE]  __attribute__((aligned(16)));
-
-static void sram_bus_timing(void)
-{
-    while (PI_STATUS_REG & 3) { /* wait for PI idle */ }
-    PI_DOM2_LAT_REG = 0x05;
-    PI_DOM2_PWD_REG = 0x0C;
-    PI_DOM2_PGS_REG = 0x0D;
-    PI_DOM2_RLS_REG = 0x02;
-}
-
-static void sram_read(uint32_t off, void *dst, uint32_t len)
-{
-    data_cache_hit_writeback_invalidate(dst, len);
-    dma_read_raw_async(dst, SRAM_ADDR + off, len);
-    dma_wait();
-    data_cache_hit_invalidate(dst, len);
-}
-
-static void sram_write(uint32_t off, const void *src, uint32_t len)
-{
-    data_cache_hit_writeback_invalidate((void *)src, len);
-    dma_write_raw_async(src, SRAM_ADDR + off, len);
-    dma_wait();
-}
 
 /* ------------------------------------------------------------- save store */
 
@@ -107,6 +78,27 @@ static void store_format(void)
     store_dir()->nslots = STORE_NSLOTS;
 }
 
+/* A directory read back from the cart is only trusted if every live slot has
+ * a terminated name and lies inside the data region -- otherwise PD_SaveRead
+ * would memcpy straight out of g_shadow.  Flashcarts do hand back garbage
+ * (a save left over from another ROM, a write cut short by power-off). */
+static int store_valid(void)
+{
+    const store_dir_t *d = store_dir();
+    if (memcmp(d->magic, STORE_MAGIC, 8) != 0 || d->nslots != STORE_NSLOTS)
+        return 0;
+    for (int i = 0; i < STORE_NSLOTS; i++) {
+        const store_slot_t *sl = &d->slots[i];
+        if (!sl->name[0])
+            continue;
+        if (memchr(sl->name, 0, sizeof(sl->name)) == NULL)
+            return 0;
+        if (sl->off > STORE_DATA_CAP || sl->len > STORE_DATA_CAP - sl->off)
+            return 0;
+    }
+    return 1;
+}
+
 static store_slot_t *store_find(const char *name)
 {
     store_dir_t *d = store_dir();
@@ -125,9 +117,9 @@ static int store_flush(void)
     if (g_save_state == SAVE_ABSENT)
         return 0;
 
-    sram_write(0, g_shadow, SRAM_SIZE);
+    sram_write(g_shadow, 0, SRAM_SIZE);
 
-    sram_read(0, g_verify, SRAM_SIZE);
+    sram_read(g_verify, 0, SRAM_SIZE);
     if (memcmp(g_verify, g_shadow, SRAM_SIZE) != 0) {
         debugf("[pd_save] SRAM write did not persist\n");
         if (g_save_state != SAVE_PRESENT)   /* never proven to work -> give up */
@@ -217,15 +209,17 @@ static int store_rebuild(const char *name, const void *data, int len)
 
 void PD_SaveInit(void)
 {
-    sram_bus_timing();
+    sram_init();
 
-    sram_read(0, g_shadow, SRAM_SIZE);
+    sram_read(g_shadow, 0, SRAM_SIZE);
 
-    if (memcmp(store_dir()->magic, STORE_MAGIC, 8) == 0) {
+    if (store_valid()) {
         g_save_state = SAVE_PRESENT;      /* our header is already on the cart */
         return;
     }
 
+    if (memcmp(store_dir()->magic, STORE_MAGIC, 8) == 0)
+        debugf("[pd_save] save directory is corrupt -- reformatting\n");
     debugf("[pd_save] formatting save store\n");
     memset(g_shadow, 0, SRAM_SIZE);
     store_format();

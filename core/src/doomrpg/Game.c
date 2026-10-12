@@ -10,6 +10,22 @@
 #include "EntityMonster.h"
 #include "Game.h"
 #include "Render.h"
+
+// [n64 port] Read a File_writeShort-length-prefixed string into dst[size],
+// clamping a corrupt length to the buffer and skipping the excess, so a
+// damaged save cannot overflow dst.  dst is always nul-terminated.
+static void readSavedString(SDL_RWops* rw, char* dst, int size, int len)
+{
+	int n = (len < 0) ? 0 : (len > size - 1) ? size - 1 : len;
+
+	SDL_memset(dst, 0, size);
+	if (n > 0) {
+		SDL_RWread(rw, dst, n, 1);
+	}
+	if (len > n) {
+		SDL_RWseek(rw, len - n, SDL_RWSEEK_CUR);
+	}
+}
 #include "Hud.h"
 #include "Menu.h"
 #include "Combat.h"
@@ -501,7 +517,7 @@ void Game_endMonstersTurn(Game_t* game)
 
 Entity_t* Game_getEntityByIndex(Game_t* game, int indx)
 {
-	if (indx != -1) {
+	if (indx >= 0 && indx < (int)SDL_arraysize(game->entities)) {
 		return &game->entities[indx];
 	}
 	return NULL;
@@ -976,8 +992,7 @@ void Game_loadPlayerState(Game_t* game, char* fileName)
 	if (rw) {
 		printf("loadPlayerState storeName:%s\n", fileName);
 		len = File_readShort(rw);
-		SDL_memset(game->fileMapName, 0, sizeof(game->fileMapName));
-		SDL_RWread(rw, &game->fileMapName, len, 1);
+		readSavedString(rw, game->fileMapName, sizeof(game->fileMapName), len);
 
 		data = File_readInt(rw);
 		game->doomRpg->doomCanvas->viewX = data;
@@ -1065,11 +1080,10 @@ void Game_loadPlayerState(Game_t* game, char* fileName)
 		}
 
 		len = File_readShort(rw);
-		SDL_memset(game->doomRpg->player->NotebookString, 0, sizeof(game->doomRpg->player->NotebookString));
-		SDL_RWread(rw, &game->doomRpg->player->NotebookString, len, 1);
-	}
+		readSavedString(rw, game->doomRpg->player->NotebookString, sizeof(game->doomRpg->player->NotebookString), len);
 
-	SDL_RWclose(rw);
+		SDL_RWclose(rw);
+	}
 }
 
 void Game_loadState(Game_t* game, int i)
@@ -1120,6 +1134,11 @@ void Game_loadWorldState(Game_t* game)
 	{
 		// Map Entities
 		cnt = File_readInt(rw);
+		if (cnt < 0 || cnt > (int)SDL_arraysize(game->entities)) {
+			printf("loadWorldState: corrupt World save (%d entities), ignored\n", cnt);
+			SDL_RWclose(rw);
+			return;
+		}
 		for (i = 0; i < cnt; i++) {
 			entity = &game->entities[i];
 			Game_unlinkEntity(game, entity);
@@ -1268,12 +1287,15 @@ void Game_loadWorldState(Game_t* game)
 			int index = ((game->doomRpg->render->tileEvents[i] & 0x7FC00) >> 10) * BYTE_CODE_MAX;
 			int count = File_readInt(rw);
 			for (int j = 0; j < count; j++) {
-				game->doomRpg->render->mapByteCode[index + (File_readInt(rw) * BYTE_CODE_MAX) + BYTE_CODE_ARG2] = 0;
+				int code = index + (File_readInt(rw) * BYTE_CODE_MAX);
+				if (code >= 0 && code < game->doomRpg->render->numByteCodes * BYTE_CODE_MAX) {
+					game->doomRpg->render->mapByteCode[code + BYTE_CODE_ARG2] = 0;
+				}
 			}
 		}
-	}
 
-	SDL_RWclose(rw);
+		SDL_RWclose(rw);
+	}
 }
 
 void Game_monsterAI(Game_t* game)
@@ -1422,7 +1444,7 @@ boolean Game_executeEvent(Game_t* game, int event, int codeId, int arg1, int arg
 			game->newDestY = (i11 >> 8) & 255;
 			game->newDestY = 32 + (game->newDestY << 6);
 			game->newAngle = (i11 >> 16) & 255;
-			strncpy(game->newMapName, game->doomRpg->render->mapStringsIDs[arg1 & 255], sizeof(game->newMapName));
+			SDL_snprintf(game->newMapName, sizeof(game->newMapName), "%s", game->doomRpg->render->mapStringsIDs[arg1 & 255]);
 			break;
 		}
 
@@ -1521,7 +1543,7 @@ boolean Game_executeEvent(Game_t* game, int event, int codeId, int arg1, int arg
 		// 18 Hide(byte x, byte y)
 		case EV_HIDE: { // EV_HIDE
 			entity = Game_findMapEntityXY(game, (arg1 & 255) << 6, ((arg1 >> 8) & 255) << 6);
-			for (entity; entity != NULL; entity = entNext) {
+			for (; entity != NULL; entity = entNext) {
 				entNext = entity->nextOnTile;
 				if ((entity->info & 0x200000) == 0x0 && entity->def->eType != 1) {
 					game->doomRpg->render->mapSprites[(entity->info & 0xFFFF) - 1].info |= 0x10000;
@@ -1766,8 +1788,9 @@ boolean Game_executeEvent(Game_t* game, int event, int codeId, int arg1, int arg
 
 		case EV_NOTE: { // EV_NOTE
 			str = game->doomRpg->player->NotebookString;
-			SDL_snprintf(str, sizeof(game->doomRpg->player->NotebookString),
-				"%s%s||", str, game->doomRpg->render->mapStringsIDs[arg1]);
+			size_t len = SDL_strlen(str);
+			SDL_snprintf(str + len, sizeof(game->doomRpg->player->NotebookString) - len,
+				"%s||", game->doomRpg->render->mapStringsIDs[arg1]);
 			break;
 		}
 
@@ -2035,7 +2058,7 @@ void Game_saveState(Game_t* game, int mapId, int x, int y, int angleDir, boolean
 	DoomCanvas_updateLoadingBar(game->doomRpg->doomCanvas);
 	Game_saveWorldState(game);
 	if (!z) {
-		if (game->newMapName && SDL_strcmp(game->newMapName, "")) {
+		if (game->newMapName[0] != '\0') {
 			DoomCanvas_updateLoadingBar(game->doomRpg->doomCanvas);
 			Game_savePlayerState(game, "Player", game->newMapName, game->newDestX, game->newDestY, game->newAngle);
 			game->newMapName[0] = '\0';

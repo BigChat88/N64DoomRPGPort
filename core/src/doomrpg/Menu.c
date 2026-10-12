@@ -199,14 +199,23 @@ void Menu_setNotes(Menu_t* menu)
 
 	
 	while (tmpStr = SDL_strchr(nbStr, 0x7c), tmpStr != NULL) {
+		if (menuSystem->numItems >= MAX_MENUITEMS) {
+			break;
+		}
 
 		if(tmpStr == nbStr) {
 			item = &menuSystem->items[menuSystem->numItems++];
 			nbStr = (char*)0x0;
 		}
 		else {
-			strncpy(text, nbStr, (int)(tmpStr - (int)nbStr));
-			text[(int)(tmpStr -(int)nbStr)] = '\0';
+			// [n64 port] clamp the segment to text[] (was an unbounded strncpy
+			// sized by a pointer-minus-int expression)
+			size_t n = (size_t)(tmpStr - nbStr);
+			if (n > sizeof(text) - 1) {
+				n = sizeof(text) - 1;
+			}
+			SDL_memcpy(text, nbStr, n);
+			text[n] = '\0';
 			item = &menuSystem->items[menuSystem->numItems++];
 			nbStr = text;
 		}
@@ -1675,7 +1684,7 @@ int Menu_select(Menu_t* menu, int menuId, int itemId)
 		case MENU_DEVELOPER_VARS: {
 			switch (itemId) {
 			case 0:
-				/* N64 port: persist on exit only (FlashRAM write stutters audio). */
+				/* N64 port: persist on exit only (a save write stutters audio). */
 				Game_saveConfig(menu->doomRpg->game, 0);
 				return menuSystem->oldMenu;
 			case 1:
@@ -1958,7 +1967,7 @@ int Menu_select(Menu_t* menu, int menuId, int itemId)
 		case MENU_INGAME_VIDEO:
 
 			if (itemId == 0) {
-				/* N64 port: persist on menu exit only.  A FlashRAM write per
+				/* N64 port: persist on menu exit only.  An SRAM write per
 				 * toggle blocks the CPU long enough to underrun the audio
 				 * mixer, which clicks/drops the sound. */
 				Game_saveConfig(menu->doomRpg->game, 0);

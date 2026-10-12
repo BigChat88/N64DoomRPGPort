@@ -16,13 +16,13 @@ jobs:
   bundle:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/dragonminded/libdragon:latest   # mips64-elf toolchain + $N64_INST
+      image: ghcr.io/dragonminded/libdragon:preview   # mips64-elf toolchain + $N64_INST
 
     steps:
       - name: Install packaging deps
         run: |
           apt-get update -qq
-          apt-get install -y --no-install-recommends zip rsync git ca-certificates gcc-mingw-w64-x86-64
+          apt-get install -y --no-install-recommends zip rsync git ca-certificates gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64
 
       - name: Checkout (with submodules)
         uses: actions/checkout@v4

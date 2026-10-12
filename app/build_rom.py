@@ -16,7 +16,8 @@ Pipeline (mirrors core/Makefile):
     3. BarToZip.exe       doomrpg.bar        -> <id>.wav / <id>.mid   (audio)
     4. (optional) FluidSynth+ffmpeg  <id>.mid -> <id>.wav            (engine music)
     5. audioconv64        snd/*.wav          -> snd/*.wav64
-       audioconv64        <bgm>/*.wav        -> mus/*.wav64           (optional)
+       core/assets/music/*.wav64 (pre-processed, see core/tools/process_music.py)
+                                             -> mus/*.wav64           (copied)
     6. mkdfs              <fs tree>          -> doomrpg.dfs
     7. n64tool --toc      elf + sym + dfs    -> doomrpg.z64
     8. ed64romconfig      --savetype ...     stamp the homebrew header
@@ -31,12 +32,11 @@ import argparse
 import io
 import os
 import shutil
-import struct
 import subprocess
 import sys
 import tempfile
+import wave
 import zipfile
-import zlib
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
@@ -206,6 +206,35 @@ def audioconv_dir(tool: Path, wav_dir: Path, out_dir: Path, flags: list[str]) ->
     return n
 
 
+OPUS_RATES = (8000, 12000, 16000, 24000, 48000)
+
+
+def frame_align_loops(src_dir: Path, dst_dir: Path) -> Path:
+    """Copy src_dir/*.wav to dst_dir cut to whole Opus frames (rate/50 samples).
+
+    libdragon's Opus reader cannot handle a looping file that ends mid-frame:
+    it asserts "opus decode error: invalid argument" when the track wraps (see
+    core/tools/process_music.py).  Only exact for Opus-native rates; any other
+    rate is resampled inside audioconv64, so it is copied as-is with a warning.
+    """
+    dst_dir.mkdir(parents=True, exist_ok=True)
+    for src in sorted(src_dir.glob("*.wav")):
+        dst = dst_dir / src.name
+        with wave.open(str(src), "rb") as r:
+            params = r.getparams()
+            if params.framerate not in OPUS_RATES:
+                log(f"  ! {src.name}: {params.framerate} Hz is not an Opus rate; "
+                    f"its loop may crash -- prepare it with core/tools/process_music.py")
+                shutil.copy2(src, dst)
+                continue
+            frame = params.framerate // 50
+            data = r.readframes(params.nframes - params.nframes % frame)
+        with wave.open(str(dst), "wb") as w:
+            w.setparams(params)
+            w.writeframes(data)
+    return dst_dir
+
+
 def render_engine_music(mid_dir: Path, snd_wav_dir: Path, soundfont: Path,
                         maxlen: int = 60, rate: int = 22050) -> int:
     fs = shutil.which("fluidsynth")
@@ -255,10 +284,11 @@ def main() -> None:
                          "Default: first .sf2 in core/tools/soundfont/, else "
                          "no engine music.")
     ap.add_argument("--bgm-dir", type=Path,
-                    help="dir of <map>.wav files for streamed per-level music "
-                         "(intro, junction, junction_destroyed, level01..07, "
-                         "reactor).  Default: core/assets/sound-example/ if it "
-                         "has .wav files, else no per-level music.")
+                    help="dir of <map>.wav64 (copied) or <map>.wav (converted "
+                         "with audioconv64; 24 or 48 kHz mono) files for "
+                         "streamed per-level music (intro, junction, "
+                         "junction_destroyed, level01..07, reactor).  Default: "
+                         "the pre-processed core/assets/music/*.wav64.")
     ap.add_argument("--no-audio", action="store_true",
                     help="skip all audio (SFX + music); build a silent ROM fast")
     ap.add_argument("--keep-work", action="store_true",
@@ -362,9 +392,9 @@ def main() -> None:
             log(f"      {n} sfx -> wav64")
             bgm_dir = args.bgm_dir
             if bgm_dir is None:
-                # auto: streamed per-level loops in core/assets/sound-example/
-                auto = CORE / "assets" / "sound-example"
-                if auto.is_dir() and any(auto.glob("*.wav")):
+                # auto: the committed, pre-processed per-level loops
+                auto = CORE / "assets" / "music"
+                if auto.is_dir() and any(auto.glob("*.wav64")):
                     bgm_dir = auto
                     log(f"      auto per-level music: {bgm_dir}")
             if bgm_dir:
@@ -372,9 +402,14 @@ def main() -> None:
                     die(f"{bgm_dir}: not a directory")
                 mus_out = fsroot / "mus"
                 mus_out.mkdir()
-                n = audioconv_dir(tools["audioconv64"], bgm_dir, mus_out,
-                                  ["--wav-compress", "3", "--wav-mono",
-                                   "--wav-loop", "true"])
+                n = 0
+                for w64 in sorted(bgm_dir.glob("*.wav64")):
+                    shutil.copy2(w64, mus_out / w64.name)
+                    n += 1
+                n += audioconv_dir(tools["audioconv64"],
+                                   frame_align_loops(bgm_dir, work / "bgm_wav"), mus_out,
+                                   ["--wav-compress", "3", "--wav-mono",
+                                    "--wav-loop", "true"])
                 log(f"      {n} music -> wav64")
 
         # 6. DragonFS image

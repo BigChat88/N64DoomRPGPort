@@ -20,7 +20,7 @@ Usage:
     python tools/bar2zip.py doomrpg.zip            # -> filesystem/DoomRPG.zip
     python tools/bar2zip.py doomrpg.bar out.zip
 """
-import sys, os, io, gzip, struct, zipfile, zlib
+import sys, os, io, struct, zipfile, zlib
 
 
 def load_bar(path: str) -> bytes:
@@ -37,7 +37,7 @@ def load_bar(path: str) -> bytes:
 
 def extract_gzip_members(bar: bytes):
     """Yield (name, data) for every gzip member found in the BAR."""
-    out, i, n = [], 0, len(bar)
+    out, i = [], 0
     while True:
         j = bar.find(b"\x1f\x8b\x08", i)
         if j < 0:

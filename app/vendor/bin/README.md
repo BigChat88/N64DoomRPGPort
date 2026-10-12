@@ -16,13 +16,17 @@ already on your system. (`n64elfcompress` is not needed -- `core/Makefile`'s
 
 ## Building them
 
-They are small single-file C programs; the libdragon Docker toolchain is not
-required. With any native C compiler:
+They are small C programs (`audioconv64` is a few C++ files); the libdragon
+Docker toolchain is not required. With any native gcc/g++ pair:
 
 ```sh
-./build-tools.sh                 # gcc on PATH
-CC=/c/Users/you/scoop/apps/gcc/current/bin/gcc ./build-tools.sh
+./build-tools.sh                 # gcc + g++ on PATH
+CC=/c/Users/you/scoop/apps/gcc/current/bin/gcc ./build-tools.sh   # CXX derived from CC
 ```
+
+They must match the `core/libdragon` revision the engine is built against
+(the `.wav64` / sprite / DFS formats change between versions), so rebuild them
+whenever the submodule moves.
 
 The prebuilt `.exe`s here were made this way with mingw-w64 gcc 15 on Windows
 x64. They are not portable across OS/arch -- rebuild for yours, or delete them

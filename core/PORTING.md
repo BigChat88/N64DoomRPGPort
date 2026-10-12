@@ -106,26 +106,36 @@ for the handful of `soundTable` ids that have no resource. With `assets/snd/`
 empty the game boots silent and `PD_SoundInit()` leaves the audio subsystem
 down.
 
-`tools/midi2snd.sh` (earlier approach: render the smaller J2ME MIDI set and
-guess a resource-id mapping) is **superseded** by `audio_setup.sh` and kept
-only for reference. `../CmidConverter/` was a from-scratch cmid decoder,
-likewise superseded by BarToZip for the music.
+Earlier approaches -- rendering the smaller J2ME MIDI set and guessing a
+resource-id mapping (`midi2snd.sh` / `Midi2Wav.java` / `preview_sf2.sh`), and a
+from-scratch cmid decoder (`cmid_extract.py`, `../CmidConverter/`) -- were
+superseded by BarToZip and have been removed; see git history.
 
 ### Per-level background music
 
-Optional. One WAV per map lives in `assets/sound-example/<map>.wav` (the `.bsp`
-basenames: `intro`, `junction`, `junction_destroyed`, `level01`..`level07`,
-`reactor`) — hand-trimmed 48 kHz mono 16-bit PCM loops, already edited so the
-loop seam sounds clean. They are used as-is: the Makefile runs `audioconv64
---wav-compress 3 --wav-loop true` on each → `rom:/mus/<map>.wav64` (streamed
-Opus), which only compresses and flags the whole file as looping and does
-**not** trim it. `tools/ost_setup.sh` (the old host-`ffmpeg` path that cut each
-MP3 in `assets/doomOST/` to a ~120 s loop) is no longer used.
+Optional. One track per map (the `.bsp` basenames: `intro`, `junction`,
+`junction_destroyed`, `level01`..`level07`, `reactor`). The repo commits only
+the **processed** form, `assets/music/<map>.wav64` (24 kHz mono streamed Opus,
+looping, ~5 MB total), which the Makefile and `app/build_rom.py` copy to
+`rom:/mus/<map>.wav64` as-is — building needs neither the sources nor ffmpeg.
+
+The sources are hand-trimmed 48 kHz mono PCM loops in
+`assets/sound-example/<map>.wav`, already edited so the loop seam sounds clean.
+They are git-ignored (~118 MB). After editing one, or after moving the
+libdragon submodule (the wav64 format follows it), regenerate with the
+host-side `python tools/process_music.py` (needs ffmpeg + `audioconv64`): it
+resamples to 24 kHz (an Opus native rate, so audioconv64 never resamples),
+**cuts each loop to a whole number of 20 ms Opus frames** (libdragon's Opus
+reader asserts "opus decode error: invalid argument" when a looping file ends
+mid-frame) and runs `audioconv64 --wav-compress 3 --wav-mono --wav-loop true`, which only
+compresses and flags the whole file as looping — it does **not** trim.
+(The old `tools/ost_setup.sh`, which auto-cut MP3s from `assets/doomOST/`
+into ~120 s loops, has been removed.)
 `src/port/pd_sound.c` plays the matching track on its own mixer channel when a
 map loads (`PD_LevelMusicForMap`, called from `DoomCanvas_loadMedia`); it is
 independent of the engine's SFX and its intro/menu music. The audio menu gains
 a **Music: on/off** item (`doomCanvas->musicEnabled`, persisted in `Config`,
-`CONFIG_VERSION` 24). With `assets/sound-example/` empty the game builds and runs exactly
+`CONFIG_VERSION` 24). With `assets/music/` empty the game builds and runs exactly
 as before.
 
 - `src/doomrpg/Z_Zip.c` `readZipFileEntry()` is still patched to **return NULL**

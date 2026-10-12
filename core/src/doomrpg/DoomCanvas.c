@@ -1410,7 +1410,7 @@ void DoomCanvas_drawSoftKeys(DoomCanvas_t* doomCanvas, char* softKeyLeft, char* 
 		}
 		else {
 			if (doomCanvas->softKeyLeft != softKeyLeft) {
-				strncpy(doomCanvas->softKeyLeft, softKeyLeft, sizeof(doomCanvas->softKeyLeft));
+				SDL_snprintf(doomCanvas->softKeyLeft, sizeof(doomCanvas->softKeyLeft), "%s", softKeyLeft);
 			}
 
 			DoomRPG_setColor(doomCanvas->doomRpg, 0x313131);
@@ -1425,7 +1425,7 @@ void DoomCanvas_drawSoftKeys(DoomCanvas_t* doomCanvas, char* softKeyLeft, char* 
 		}
 		else {
 			if (doomCanvas->softKeyRight != softKeyRight) {
-				strncpy(doomCanvas->softKeyRight, softKeyRight, sizeof(doomCanvas->softKeyRight));
+				SDL_snprintf(doomCanvas->softKeyRight, sizeof(doomCanvas->softKeyRight), "%s", softKeyRight);
 			}
 			DoomRPG_setColor(doomCanvas->doomRpg, 0x313131);
 			x1 += (doomCanvas->clipRect.w - 52);
@@ -1895,7 +1895,7 @@ void DoomCanvas_handlePasswordEvents(DoomCanvas_t* doomCanvas, int i)
 			z = true;
 		}
 
-		strncpy(doomCanvas->strPassCode, doomCanvas->passCode, sizeof(doomCanvas->strPassCode));
+		SDL_snprintf(doomCanvas->strPassCode, sizeof(doomCanvas->strPassCode), "%s", doomCanvas->passCode);
 
 		for (j = len1; j < len2; j++) {
 			doomCanvas->strPassCode[j] = '_';
@@ -2202,7 +2202,7 @@ void DoomCanvas_loadEpilogueText(DoomCanvas_t* doomCanvas)
 	SDL_memset(rank, 0, sizeof(rank));
 
 	if (overall >= 80) {
-		strncpy(rank, "Master", sizeof(rank));
+		SDL_snprintf(rank, sizeof(rank), "Master");
 		strncpy(doomCanvas->epilogueText[1], 
 			"You have found\n"
 			"every secret and\n"
@@ -2216,7 +2216,7 @@ void DoomCanvas_loadEpilogueText(DoomCanvas_t* doomCanvas)
 			, sizeof(*doomCanvas->epilogueText));
 	}
 	else if (overall >= 70) {
-		strncpy(rank, "Baddy", sizeof(rank));
+		SDL_snprintf(rank, sizeof(rank), "Baddy");
 		strncpy(doomCanvas->epilogueText[1],
 			"Nice job. There\n"
 			"is only a little\n"
@@ -2230,7 +2230,7 @@ void DoomCanvas_loadEpilogueText(DoomCanvas_t* doomCanvas)
 			, sizeof(*doomCanvas->epilogueText));
 	}
 	else if (overall >= 50) {
-		strncpy(rank, "Average", sizeof(rank));
+		SDL_snprintf(rank, sizeof(rank), "Average");
 		strncpy(doomCanvas->epilogueText[1],
 			"You've beaten the\n"
 			"demons from Hell,\n"
@@ -2242,7 +2242,7 @@ void DoomCanvas_loadEpilogueText(DoomCanvas_t* doomCanvas)
 			, sizeof(*doomCanvas->epilogueText));
 	}
 	else {
-		strncpy(rank, "Chump", sizeof(rank));
+		SDL_snprintf(rank, sizeof(rank), "Chump");
 		strncpy(doomCanvas->epilogueText[1],
 			"You've finished\n"
 			"the game, barely.\n"
@@ -2456,7 +2456,7 @@ void DoomCanvas_loadState(DoomCanvas_t* doomCanvas, int i, char* text)
 		doomCanvas->printMsg[0] = '\0';
 	}
 	else {
-		strncpy(doomCanvas->printMsg, text, sizeof(doomCanvas->printMsg));
+		SDL_snprintf(doomCanvas->printMsg, sizeof(doomCanvas->printMsg), "%s", text);
 	}
 
 	DoomCanvas_setState(doomCanvas, ST_LOADING);
@@ -2601,10 +2601,13 @@ void DoomCanvas_playingState(DoomCanvas_t* doomCanvas)
 
 			DoomCanvas_updateView(doomCanvas);
 			applyBerserk = true;
-		} // <- I added the bracket here as I need the graphics to always update on every frame, 
+		} // <- I added the bracket here as I need the graphics to always update on every frame,
 		  //    without player movement updates intervening.
 
-			DoomCanvas_drawRGB(doomCanvas);
+			// [n64 port] A DoomCanvas_drawRGB() used to sit here as well.  It was a
+			// whole-view blit whose result nothing reads: the unconditional
+			// drawRGB() below copies the same rect again before anything else is
+			// drawn, so this one only cost a full framebuffer pass per frame.
 
 			boolean renderParticle = true;
 			if (doomCanvas->particleSystem->particleCount > 0) {
@@ -2644,21 +2647,38 @@ void DoomCanvas_playingState(DoomCanvas_t* doomCanvas)
 			Hud_drawEffects(doomCanvas->hud);
 			PD_PerfEnd(PD_PERF_HUD);
 
+			// [n64 port] Idle sound.  The original picked any monster on the
+			// active list -- and a monster stays active from the first time it
+			// is seen until it dies -- so one left rooms behind kept growling
+			// at full volume.  Only monsters within IDLE_SOUND_RANGE tiles of
+			// the player are candidates now (reservoir-sampled, one pass); the
+			// timer still advances when none is close enough.
+#define IDLE_SOUND_RANGE 4
 			activeMonsters = doomCanvas->game->activeMonsters;
 			if (activeMonsters && (doomCanvas->time > doomCanvas->idleTime))
 			{
-				i = 0;
-				j = 0;
+				Entity_t* chosen = NULL;
+				int nearby = 0;
+				int px = doomCanvas->destX >> 6;
+				int py = doomCanvas->destY >> 6;
+
+				j = 0;   // active monsters in total (scales the next delay, as before)
 				do
 				{
-					++i;
-					activeMonsters = activeMonsters->monster->nextOnList;
-					if (doomCanvas->game->activeMonsters == activeMonsters)
-					{
-						j = i;
-						i = (-DoomRPG_randNextByte(&doomCanvas->doomRpg->random) % i);
+					int spr = activeMonsters->info & 0xFFFF;
+					j++;
+					if (spr != 0) {
+						Sprite_t* sprite = &doomCanvas->render->mapSprites[spr - 1];
+						if (ABS((sprite->x >> 6) - px) <= IDLE_SOUND_RANGE &&
+							ABS((sprite->y >> 6) - py) <= IDLE_SOUND_RANGE) {
+							nearby++;
+							if ((DoomRPG_randNextByte(&doomCanvas->doomRpg->random) % nearby) == 0) {
+								chosen = activeMonsters;
+							}
+						}
 					}
-				} while (i);
+					activeMonsters = activeMonsters->monster->nextOnList;
+				} while (activeMonsters != doomCanvas->game->activeMonsters);
 
 				doomCanvas->idleTime = (DoomRPG_randNextByte(&doomCanvas->doomRpg->random) << 6) - 1000 * j;
 				if (doomCanvas->idleTime < 0) {
@@ -2668,12 +2688,15 @@ void DoomCanvas_playingState(DoomCanvas_t* doomCanvas)
 				doomCanvas->idleTime = doomCanvas->idleTime + doomCanvas->time + 6000;
 
 				// Idle Sound
-				snd = EntityMonster_getSoundID(activeMonsters->monster, 0);
-				if (snd != 0) {
-					printf("Playing idle sound %d at %d\n", snd, doomCanvas->time);
-					Sound_playSound(doomCanvas->doomRpg->sound, snd, 0, 1);
+				if (chosen) {
+					snd = EntityMonster_getSoundID(chosen->monster, 0);
+					if (snd != 0) {
+						printf("Playing idle sound %d at %d\n", snd, doomCanvas->time);
+						Sound_playSound(doomCanvas->doomRpg->sound, snd, 0, 1);
+					}
 				}
 			}
+#undef IDLE_SOUND_RANGE
 		//} // Old
 	}
 }
@@ -2685,7 +2708,7 @@ void DoomCanvas_prepareDialog(DoomCanvas_t* doomCanvas, char* str, boolean dialo
 	i = 0;
 	j = 0;
 	doomCanvas->numDialogLines = 0;
-	strncpy(doomCanvas->dialogBuffer, str, sizeof(doomCanvas->dialogBuffer));
+	SDL_snprintf(doomCanvas->dialogBuffer, sizeof(doomCanvas->dialogBuffer), "%s", str);
 
 	strLen = SDL_strlen(doomCanvas->dialogBuffer);
 	while (j < strLen) {
@@ -2836,6 +2859,29 @@ void DoomCanvas_runInputEvents(DoomCanvas_t* doomCanvas)
 }
 
 
+// [n64 port] Black out the screen around the 3D view only -- the area that
+// DoomCanvas_drawRGB() does not cover (same destination rect as there).
+static void DoomCanvas_clearOutsideView(DoomCanvas_t* doomCanvas)
+{
+	Render_t* render = doomCanvas->render;
+	int W = sdlVideo.rendererW;
+	int H = sdlVideo.rendererH;
+	int vx = render->screenX;
+	int vy = render->screenY;
+	int vw = (render->screenWidth < W) ? render->screenWidth : W;
+	int vh = (render->screenHeight < H) ? render->screenHeight : H;
+	SDL_Rect r;
+
+	r.x = 0;       r.y = 0;       r.w = W;            r.h = vy;            // above
+	if (r.h > 0) SDL_RenderFillRect(sdlVideo.renderer, &r);
+	r.x = 0;       r.y = vy + vh; r.w = W;            r.h = H - (vy + vh); // below
+	if (r.h > 0) SDL_RenderFillRect(sdlVideo.renderer, &r);
+	r.x = 0;       r.y = vy;      r.w = vx;           r.h = vh;            // left
+	if (r.w > 0) SDL_RenderFillRect(sdlVideo.renderer, &r);
+	r.x = vx + vw; r.y = vy;      r.w = W - (vx + vw); r.h = vh;           // right
+	if (r.w > 0) SDL_RenderFillRect(sdlVideo.renderer, &r);
+}
+
 void DoomCanvas_run(DoomCanvas_t* doomCanvas)
 {
 	int sound;
@@ -2843,7 +2889,6 @@ void DoomCanvas_run(DoomCanvas_t* doomCanvas)
 	// New Code Lines
 	//{
 	DoomRPG_setColor(doomCanvas->doomRpg, 0x000000);
-	DoomRPG_clearGraphics(doomCanvas->doomRpg);
 	//}
 
 	//DoomCanvas_updateLoadingBar(doomCanvas);
@@ -2854,6 +2899,19 @@ void DoomCanvas_run(DoomCanvas_t* doomCanvas)
 	doomCanvas->doomRpg->sound->nextplay = 0;
 	if (doomCanvas->doomRpg->graphSetCliping != 0) {
 		DoomRPG_setClipFalse(doomCanvas->doomRpg);
+	}
+
+	// [n64 port] Clearing the whole 320x240 frame every tick was ~150 KB of
+	// uncached stores, most of them overwritten right away by the 3D-view blit.
+	// While playing, playingState() always blits the full view rect (except in
+	// renderOnly mode or once the player is dead), so only clear what is
+	// outside it.  (After setClipFalse: FillRect honours the clip, Clear doesn't.)
+	if (doomCanvas->state == ST_PLAYING && !doomCanvas->renderOnly &&
+		CombatEntity_getHealth(&doomCanvas->player->ce) > 0) {
+		DoomCanvas_clearOutsideView(doomCanvas);
+	}
+	else {
+		DoomRPG_clearGraphics(doomCanvas->doomRpg);
 	}
 
 	if (doomCanvas->benchmarkString != 0) {
@@ -3168,7 +3226,7 @@ void DoomCanvas_saveState(DoomCanvas_t* doomCanvas, int i, char* text)
 		doomCanvas->printMsg[0] = '\0';
 	}
 	else {
-		strncpy(doomCanvas->printMsg, text, sizeof(doomCanvas->printMsg));
+		SDL_snprintf(doomCanvas->printMsg, sizeof(doomCanvas->printMsg), "%s", text);
 	}
 
 	DoomCanvas_setState(doomCanvas, ST_SAVING);
@@ -3322,11 +3380,6 @@ void DoomCanvas_setState(DoomCanvas_t* doomCanvas, int stateNum)
 			doomCanvas->numEvents = 0;
 		}
 	}
-}
-
-byte DoomCanvas_checkState(DoomCanvas_t* doomCanvas)
-{
-
 }
 
 void DoomCanvas_invalidateRectAndUpdateView(DoomCanvas_t* doomCanvas)

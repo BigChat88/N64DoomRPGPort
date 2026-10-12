@@ -125,6 +125,7 @@ void Render_freeRuntime(Render_t* render) {
 
 	SDL_free(render->mapByteCode);
 	render->mapByteCode = NULL;
+	render->numByteCodes = 0;
 
 	for (i = 0; i < render->mapStringCount; i++) {
 		SDL_free(render->mapStringsIDs[i]);
@@ -722,7 +723,9 @@ boolean Render_beginLoadMapData(Render_t* render)
 
 	SDL_free(render->mapByteCode);
 	render->mapByteCode = NULL;
+	render->numByteCodes = 0;
 	if (numByteCodes > 0) {
+		render->numByteCodes = numByteCodes;
 		render->mapByteCode = SDL_malloc(numByteCodes * sizeof(int) * 3);
 
 		for (j = 0; j < numByteCodes; j++) {
@@ -1473,20 +1476,47 @@ void Render_drawplane(Render_t* render, int x, int y, short** planeTextures, int
 void Render_spanPlane(Render_t* render, int x, int y, short** planeTextures, int param_5, int param_6,
 	int param_7, int param_8, int cnt)
 {
+	// [n64 port] The framebuffer is uncached, so every store is its own bus
+	// write -- and one 16-bit store per pixel made this the floor/ceiling
+	// cost.  Pack two pixels into each 32-bit store instead (same trick as
+	// blit565 in pd_video.c).  Big-endian: the left pixel is the high half.
+	typedef uint32_t __attribute__((may_alias)) u32_alias;
 	short* pixels;
+	u32_alias* pixels32;
 	int offset1, offset2;
+	unsigned short a, b;
+
+#define PLANE_TEXEL(out) \
+	offset1 = (((unsigned int)(param_6 >> 17) & 0x3E0) + ((unsigned int)(param_5 << 5) >> 27)); \
+	offset2 = (((unsigned int)(param_6 >> 10) & 0xFC0) + ((unsigned int)(param_5 << 10) >> 26)); \
+	(out) = (unsigned short)planeTextures[offset1][offset2]; \
+	param_5 += param_7; \
+	param_6 += param_8
+
+	if (cnt <= 0) {
+		return;
+	}
 
 	pixels = render->pixels + (render->pitch >> 1) * y + x;
-	while (--cnt >= 0)
-	{
-		offset1 = (((unsigned int)(param_6 >> 17) & 0x3E0) + ((unsigned int)(param_5 << 5) >> 27));
-		offset2 = (((unsigned int)(param_6 >> 10) & 0xFC0) + ((unsigned int)(param_5 << 10) >> 26));
 
-		*pixels++ = planeTextures[offset1][offset2];
-
-		param_5 += param_7;
-		param_6 += param_8;
+	if ((uintptr_t)pixels & 2) {          // odd column (screen shake): 1 px to align
+		PLANE_TEXEL(a);
+		*pixels++ = (short)a;
+		cnt--;
 	}
+
+	pixels32 = (u32_alias*)pixels;
+	for (; cnt >= 2; cnt -= 2) {
+		PLANE_TEXEL(a);
+		PLANE_TEXEL(b);
+		*pixels32++ = ((uint32_t)a << 16) | b;
+	}
+
+	if (cnt) {
+		PLANE_TEXEL(a);
+		*(short*)pixels32 = (short)a;
+	}
+#undef PLANE_TEXEL
 }
 
 void Render_renderBSP(Render_t* render)

@@ -40,7 +40,7 @@ int main(void)
     }
     joypad_init();
 
-    /* Bring the FlashRAM save store up before the game reads its config. */
+    /* Bring the SRAM save store up before the game reads its config. */
     PD_SaveInit();
 
     /* game boot ------------------------------------------------------- */
