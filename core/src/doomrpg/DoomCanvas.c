@@ -2601,10 +2601,13 @@ void DoomCanvas_playingState(DoomCanvas_t* doomCanvas)
 
 			DoomCanvas_updateView(doomCanvas);
 			applyBerserk = true;
-		} // <- I added the bracket here as I need the graphics to always update on every frame, 
+		} // <- I added the bracket here as I need the graphics to always update on every frame,
 		  //    without player movement updates intervening.
 
-			DoomCanvas_drawRGB(doomCanvas);
+			// [n64 port] A DoomCanvas_drawRGB() used to sit here as well.  It was a
+			// whole-view blit whose result nothing reads: the unconditional
+			// drawRGB() below copies the same rect again before anything else is
+			// drawn, so this one only cost a full framebuffer pass per frame.
 
 			boolean renderParticle = true;
 			if (doomCanvas->particleSystem->particleCount > 0) {
@@ -2836,6 +2839,29 @@ void DoomCanvas_runInputEvents(DoomCanvas_t* doomCanvas)
 }
 
 
+// [n64 port] Black out the screen around the 3D view only -- the area that
+// DoomCanvas_drawRGB() does not cover (same destination rect as there).
+static void DoomCanvas_clearOutsideView(DoomCanvas_t* doomCanvas)
+{
+	Render_t* render = doomCanvas->render;
+	int W = sdlVideo.rendererW;
+	int H = sdlVideo.rendererH;
+	int vx = render->screenX;
+	int vy = render->screenY;
+	int vw = (render->screenWidth < W) ? render->screenWidth : W;
+	int vh = (render->screenHeight < H) ? render->screenHeight : H;
+	SDL_Rect r;
+
+	r.x = 0;       r.y = 0;       r.w = W;            r.h = vy;            // above
+	if (r.h > 0) SDL_RenderFillRect(sdlVideo.renderer, &r);
+	r.x = 0;       r.y = vy + vh; r.w = W;            r.h = H - (vy + vh); // below
+	if (r.h > 0) SDL_RenderFillRect(sdlVideo.renderer, &r);
+	r.x = 0;       r.y = vy;      r.w = vx;           r.h = vh;            // left
+	if (r.w > 0) SDL_RenderFillRect(sdlVideo.renderer, &r);
+	r.x = vx + vw; r.y = vy;      r.w = W - (vx + vw); r.h = vh;           // right
+	if (r.w > 0) SDL_RenderFillRect(sdlVideo.renderer, &r);
+}
+
 void DoomCanvas_run(DoomCanvas_t* doomCanvas)
 {
 	int sound;
@@ -2843,7 +2869,6 @@ void DoomCanvas_run(DoomCanvas_t* doomCanvas)
 	// New Code Lines
 	//{
 	DoomRPG_setColor(doomCanvas->doomRpg, 0x000000);
-	DoomRPG_clearGraphics(doomCanvas->doomRpg);
 	//}
 
 	//DoomCanvas_updateLoadingBar(doomCanvas);
@@ -2854,6 +2879,19 @@ void DoomCanvas_run(DoomCanvas_t* doomCanvas)
 	doomCanvas->doomRpg->sound->nextplay = 0;
 	if (doomCanvas->doomRpg->graphSetCliping != 0) {
 		DoomRPG_setClipFalse(doomCanvas->doomRpg);
+	}
+
+	// [n64 port] Clearing the whole 320x240 frame every tick was ~150 KB of
+	// uncached stores, most of them overwritten right away by the 3D-view blit.
+	// While playing, playingState() always blits the full view rect (except in
+	// renderOnly mode or once the player is dead), so only clear what is
+	// outside it.  (After setClipFalse: FillRect honours the clip, Clear doesn't.)
+	if (doomCanvas->state == ST_PLAYING && !doomCanvas->renderOnly &&
+		CombatEntity_getHealth(&doomCanvas->player->ce) > 0) {
+		DoomCanvas_clearOutsideView(doomCanvas);
+	}
+	else {
+		DoomRPG_clearGraphics(doomCanvas->doomRpg);
 	}
 
 	if (doomCanvas->benchmarkString != 0) {
