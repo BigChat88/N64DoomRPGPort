@@ -250,7 +250,6 @@ void DoomCanvas_run(DoomCanvas_t* doomCanvas);
 void DoomCanvas_saveState(DoomCanvas_t* doomCanvas, int i, char* text);
 void DoomCanvas_setAnimFrames(DoomCanvas_t* doomCanvas, int i);
 void DoomCanvas_setState(DoomCanvas_t* doomCanvas, int stateNum);
-byte DoomCanvas_checkState(DoomCanvas_t* doomCanvas);
 void DoomCanvas_invalidateRectAndUpdateView(DoomCanvas_t* doomCanvas);
 void DoomCanvas_updateViewTrue(DoomCanvas_t* doomCanvas);
 void DoomCanvas_startDialog(DoomCanvas_t* doomCanvas, char* text, boolean dialogBackSoftKey);

@@ -419,7 +419,7 @@ static void setBind(int* keyBinds, int keycode)
 
 // New Function
 void DoomRPG_setBind(DoomRPG_t* doomrpg, int mouse_Button, const Uint8* state) {
-	int i, keyMapId, buttomID;
+	int i, keyMapId, buttomID = -1;
 
 	// KeyBoard
 	{
@@ -1193,7 +1193,7 @@ void File_writeLong(SDL_RWops* rw, int i)
 
 boolean File_readBoolean(SDL_RWops* rw)
 {
-	char boolData;
+	char boolData = 0;
 
 	if (rw) {
 		SDL_RWread(rw, &boolData, sizeof(byte), 1);
@@ -1204,7 +1204,7 @@ boolean File_readBoolean(SDL_RWops* rw)
 
 int File_readByte(SDL_RWops* rw)
 {
-	char bData;
+	char bData = 0;
 
 	if (rw) {
 		SDL_RWread(rw, &bData, sizeof(byte), 1);
@@ -1215,7 +1215,7 @@ int File_readByte(SDL_RWops* rw)
 
 int File_readShort(SDL_RWops* rw)
 {
-	short sData;
+	short sData = 0;
 
 	if (rw) {
 		SDL_RWread(rw, &sData, sizeof(short), 1);
@@ -1226,7 +1226,7 @@ int File_readShort(SDL_RWops* rw)
 
 int File_readInt(SDL_RWops* rw)
 {
-	int iData;
+	int iData = 0;
 
 	if (rw) {
 		SDL_RWread(rw, &iData, sizeof(int), 1);
@@ -1237,7 +1237,7 @@ int File_readInt(SDL_RWops* rw)
 
 int File_readLong(SDL_RWops* rw)
 {
-	long lData;
+	long lData = 0;
 
 	if (rw) {
 		SDL_RWread(rw, &lData, sizeof(long), 1);

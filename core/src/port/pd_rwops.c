@@ -4,7 +4,7 @@
  * Read streams are served from the DragonFS image linked into the ROM
  * (assets/ -> rom:/).  Memory streams back the in-RAM .zip entry decoding.
  * Write streams for the four save slots ("Config" / "Player" / "Player2" /
- * "World") are buffered in RAM and committed to cartridge FlashRAM on close
+ * "World") are buffered in RAM and committed to cartridge SRAM on close
  * (see pd_save.c); reads of those names come straight back out of the store.
  * Any other write target is still accepted and discarded.
  */

@@ -84,6 +84,7 @@ typedef struct Render_s
 	int* tileEvents;
 	int numTileEvents;
 	int* mapByteCode;
+	int numByteCodes;     // entries in mapByteCode (BYTE_CODE_MAX ints each)
 	char** mapStringsIDs;
 	int mapStringCount;
 	byte mapFlags[1024];

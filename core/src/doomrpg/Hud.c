@@ -68,7 +68,7 @@ void Hud_addMessageForce(Hud_t* hud, char* str, boolean force)
             if (hud->msgCount == MAX_MESSAGES) {
                 Hud_shiftMsgs(hud);
             }
-            strncpy(hud->messages[hud->msgCount], str, MS_PER_CHAR);
+            SDL_snprintf(hud->messages[hud->msgCount], MS_PER_CHAR, "%s", str);
             hud->msgCount++;
 
             if (hud->msgCount == 1) {
@@ -163,12 +163,12 @@ void Hud_drawBottomBar(Hud_t* hud)
 
     // draw health
     DoomCanvas_drawImageSpecial(doomCanvas, img, 0, 0, hud->iconSheetWidth, hud->iconSheetHeight, 0, hud->statusHealthXpos + cx, dy, 0x24);
-    SDL_snprintf(hud->healthNum, 4, "%d", CombatEntity_getHealth(ce));
+    SDL_snprintf(hud->healthNum, sizeof(hud->healthNum), "%d", CombatEntity_getHealth(ce));
     DoomCanvas_drawFont(doomCanvas, hud->healthNum, hud->statusHealthXpos + cx + x * 2 + hud->iconSheetWidth + 1, y, 9, 0, 3, hud->largeHud);
 
     // draw armmor
     DoomCanvas_drawImageSpecial(doomCanvas, img, 0, hud->iconSheetHeight, hud->iconSheetWidth, hud->iconSheetHeight, 0, hud->statusArmorXpos + cx, dy, 0x24);
-    SDL_snprintf(hud->armorNum, 4, "%d", CombatEntity_getArmor(ce));
+    SDL_snprintf(hud->armorNum, sizeof(hud->armorNum), "%d", CombatEntity_getArmor(ce));
     DoomCanvas_drawFont(doomCanvas, hud->armorNum, hud->statusArmorXpos + cx + x * 2 + hud->iconSheetWidth, y, 9, 0, 3, hud->largeHud);
 
     // draw face
@@ -224,12 +224,12 @@ void Hud_drawBottomBar(Hud_t* hud)
 
         if (weapon == 0) {
             DoomCanvas_drawImageSpecial(doomCanvas, img, 0, hud->iconSheetHeight << 1, hud->iconSheetWidth, hud->iconSheetHeight, 0, hud->statusAmmoXpos + cx, dy, 0x24);
-            strncpy(hud->ammoNum, "--", 4);
+            SDL_snprintf(hud->ammoNum, sizeof(hud->ammoNum), "--");
         }
         else {
             combat = hud->doomRpg->combat;
             DoomCanvas_drawImageSpecial(doomCanvas, img, 0, hud->iconSheetHeight * (combat->weaponInfo[weapon].ammoType + 3), hud->iconSheetWidth, hud->iconSheetHeight, 0, hud->statusAmmoXpos + cx, dy, 0x24);
-            SDL_snprintf(hud->ammoNum, 3, "%d", hud->doomRpg->player->ammo[combat->weaponInfo[weapon].ammoType]);
+            SDL_snprintf(hud->ammoNum, sizeof(hud->ammoNum), "%d", hud->doomRpg->player->ammo[combat->weaponInfo[weapon].ammoType]);
         }
 
         DoomCanvas_drawFont(doomCanvas, hud->ammoNum, hud->statusAmmoXpos + cx + hud->iconSheetWidth + x * 2, y, 9, 0, 2, hud->largeHud);
@@ -238,16 +238,16 @@ void Hud_drawBottomBar(Hud_t* hud)
     // draw orientation text
     switch (doomCanvas->destAngle & 255) {
     case 0:
-        strncpy(dir, "E", sizeof(dir));
+        SDL_snprintf(dir, sizeof(dir), "E");
         break;
     case 128:
-        strncpy(dir, "W", sizeof(dir));
+        SDL_snprintf(dir, sizeof(dir), "W");
         break;
     case 192:
-        strncpy(dir, "S", sizeof(dir));
+        SDL_snprintf(dir, sizeof(dir), "S");
         break;
     default:
-        strncpy(dir, "N", sizeof(dir));
+        SDL_snprintf(dir, sizeof(dir), "N");
         break;
     }
 
@@ -425,7 +425,7 @@ void Hud_shiftMsgs(Hud_t* hud)
     int i;
 
     for (i = 0; i < (hud->msgCount - 1); i++) {
-        strncpy(hud->messages[i], hud->messages[i + 1], MS_PER_CHAR);
+        SDL_snprintf(hud->messages[i], MS_PER_CHAR, "%s", hud->messages[i + 1]);
     }
 
     hud->msgCount--;

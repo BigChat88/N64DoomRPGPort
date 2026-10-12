@@ -300,7 +300,6 @@ void Sound_playSound(Sound_t* sound, int resourceID, byte flags, int priority)
 
 	if (sound->soundEnabled != 0) {
 
-		resourceID = resourceID; //Sound_getFromResourceID(resourceID);
 		if (resourceID >= 0) {
 
 			/*if (isMusic) {

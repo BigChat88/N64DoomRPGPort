@@ -72,7 +72,7 @@ void MenuSystem_back(MenuSystem_t* menuSystem)
 			Game_saveConfig(menuSystem->doomRpg->game, 0);
 		}
 
-		/* N64 port: the option menus defer their FlashRAM write to menu exit
+		/* N64 port: the option menus defer their SRAM write to menu exit
 		 * (a save per toggle stutters the audio mixer).  The "Back" item does
 		 * it in Menu_select; do the same here for the B-button exit path. */
 		switch (menuSystem->menu) {
@@ -323,12 +323,12 @@ void MenuSystem_paint(MenuSystem_t* menuSystem)
 
 				int i3 = (doomCanvas->displayRect.h % 8) >> 1;
 				int i4 = (doomCanvas->displayRect.w % 8) >> 1;
-				for (i4; i4 < doomCanvas->displayRect.w; i4 += 8) {
+				for (; i4 < doomCanvas->displayRect.w; i4 += 8) {
 					DoomRPG_drawLine(doomRpg, i4, doomRpg->hud->statusTopBarHeight, i4, (doomCanvas->displayRect.h - doomRpg->hud->statusBarHeight) - 1);
 				}
 
 				int i5 = doomRpg->hud->statusTopBarHeight + i3;
-				for (i5; i5 < doomCanvas->displayRect.h - 20; i5 += 8) {
+				for (; i5 < doomCanvas->displayRect.h - 20; i5 += 8) {
 					DoomRPG_drawLine(doomRpg, 0, i5, doomCanvas->displayRect.w, i5);
 				}
 				DoomRPG_setColor(doomRpg, 0x000000);
@@ -435,7 +435,10 @@ void MenuSystem_paint(MenuSystem_t* menuSystem)
 			SDL_memcpy(textField, mItem->textField, sizeof(mItem->textField));
 			SDL_memcpy(textField2, mItem->textField2, sizeof(mItem->textField2));
 
-			if (textField != '\0')
+			// [n64 port] was `if (textField != '\0')` -- an array-vs-NUL compare
+			// that is always true.  Every row must run this block anyway (binding
+			// rows fill textField in here, value-only rows draw textField2, the
+			// hand marks the selection); the empty-text cases are checked inside.
 			{
 				if ((mItem->flags & 8) && ((menuSystem->menu == MENU_BINDINGS) || (menuSystem->menu == MENU_INGAME_BINDINGS))) { // New Flag
 					if (doomCanvas->time > menuSystem->nextMsgTime) {

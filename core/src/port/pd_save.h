@@ -28,7 +28,7 @@ const char *PD_SaveCanon(const char *path);
 int PD_SaveRead(const char *name, void **out, int *len);
 
 /* Replace (or create) slot `name` with `len` bytes from `data`, then flush
- * the changed FlashRAM sectors.  Returns 1 on success, 0 if it does not fit. */
+ * the whole store to SRAM.  Returns 1 on success, 0 if it does not fit. */
 int PD_SaveWrite(const char *name, const void *data, int len);
 
 /* Delete slot `name` and flush.  Accepts a raw path (canonicalised here) so

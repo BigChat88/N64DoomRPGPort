@@ -125,6 +125,7 @@ void Render_freeRuntime(Render_t* render) {
 
 	SDL_free(render->mapByteCode);
 	render->mapByteCode = NULL;
+	render->numByteCodes = 0;
 
 	for (i = 0; i < render->mapStringCount; i++) {
 		SDL_free(render->mapStringsIDs[i]);
@@ -722,7 +723,9 @@ boolean Render_beginLoadMapData(Render_t* render)
 
 	SDL_free(render->mapByteCode);
 	render->mapByteCode = NULL;
+	render->numByteCodes = 0;
 	if (numByteCodes > 0) {
+		render->numByteCodes = numByteCodes;
 		render->mapByteCode = SDL_malloc(numByteCodes * sizeof(int) * 3);
 
 		for (j = 0; j < numByteCodes; j++) {
