@@ -2647,21 +2647,38 @@ void DoomCanvas_playingState(DoomCanvas_t* doomCanvas)
 			Hud_drawEffects(doomCanvas->hud);
 			PD_PerfEnd(PD_PERF_HUD);
 
+			// [n64 port] Idle sound.  The original picked any monster on the
+			// active list -- and a monster stays active from the first time it
+			// is seen until it dies -- so one left rooms behind kept growling
+			// at full volume.  Only monsters within IDLE_SOUND_RANGE tiles of
+			// the player are candidates now (reservoir-sampled, one pass); the
+			// timer still advances when none is close enough.
+#define IDLE_SOUND_RANGE 4
 			activeMonsters = doomCanvas->game->activeMonsters;
 			if (activeMonsters && (doomCanvas->time > doomCanvas->idleTime))
 			{
-				i = 0;
-				j = 0;
+				Entity_t* chosen = NULL;
+				int nearby = 0;
+				int px = doomCanvas->destX >> 6;
+				int py = doomCanvas->destY >> 6;
+
+				j = 0;   // active monsters in total (scales the next delay, as before)
 				do
 				{
-					++i;
-					activeMonsters = activeMonsters->monster->nextOnList;
-					if (doomCanvas->game->activeMonsters == activeMonsters)
-					{
-						j = i;
-						i = (-DoomRPG_randNextByte(&doomCanvas->doomRpg->random) % i);
+					int spr = activeMonsters->info & 0xFFFF;
+					j++;
+					if (spr != 0) {
+						Sprite_t* sprite = &doomCanvas->render->mapSprites[spr - 1];
+						if (ABS((sprite->x >> 6) - px) <= IDLE_SOUND_RANGE &&
+							ABS((sprite->y >> 6) - py) <= IDLE_SOUND_RANGE) {
+							nearby++;
+							if ((DoomRPG_randNextByte(&doomCanvas->doomRpg->random) % nearby) == 0) {
+								chosen = activeMonsters;
+							}
+						}
 					}
-				} while (i);
+					activeMonsters = activeMonsters->monster->nextOnList;
+				} while (activeMonsters != doomCanvas->game->activeMonsters);
 
 				doomCanvas->idleTime = (DoomRPG_randNextByte(&doomCanvas->doomRpg->random) << 6) - 1000 * j;
 				if (doomCanvas->idleTime < 0) {
@@ -2671,12 +2688,15 @@ void DoomCanvas_playingState(DoomCanvas_t* doomCanvas)
 				doomCanvas->idleTime = doomCanvas->idleTime + doomCanvas->time + 6000;
 
 				// Idle Sound
-				snd = EntityMonster_getSoundID(activeMonsters->monster, 0);
-				if (snd != 0) {
-					printf("Playing idle sound %d at %d\n", snd, doomCanvas->time);
-					Sound_playSound(doomCanvas->doomRpg->sound, snd, 0, 1);
+				if (chosen) {
+					snd = EntityMonster_getSoundID(chosen->monster, 0);
+					if (snd != 0) {
+						printf("Playing idle sound %d at %d\n", snd, doomCanvas->time);
+						Sound_playSound(doomCanvas->doomRpg->sound, snd, 0, 1);
+					}
 				}
 			}
+#undef IDLE_SOUND_RANGE
 		//} // Old
 	}
 }
