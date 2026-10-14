@@ -143,6 +143,30 @@ Entity_t* Entity_powerCouplingDied(void* gameStruct)
     return getEntity;
 }
 
+/* N64 port: Hard gives enemies +20% max health (rounded, capped at the
+ * engine's 255). */
+static int Entity_hardHealth(int hp)
+{
+    hp = (hp * 12 + 5) / 10;
+    return (hp > 255) ? 255 : hp;
+}
+
+/* N64 port: kill XP as on Normal.  The XP formula reads max health, so on
+ * Hard it is computed with the +20% undone (smallest base health that scales
+ * to the current value -- exact except for enemies capped at 255). */
+static int Entity_killEXP(Entity_t* entity)
+{
+    CombatEntity_t ce = entity->monster->ce;
+    int maxHp, hp;
+
+    if (entity->doomRpg->doomCanvas->difficulty == DIFFICULTY_HARD) {
+        maxHp = CombatEntity_getMaxHealth(&ce);
+        for (hp = 0; hp < maxHp && Entity_hardHealth(hp) < maxHp; hp++) {}
+        CombatEntity_setMaxHealth(&ce, hp);
+    }
+    return CombatEntity_getEXP(&ce);
+}
+
 void Entity_died(Entity_t* entity)
 {
     GameSprite_t* gSprite;
@@ -168,7 +192,7 @@ void Entity_died(Entity_t* entity)
         switch (entity->def->eType) {
 
             case 1: // Enemy
-                Player_addXP(player, CombatEntity_getEXP(&entity->monster->ce));
+                Player_addXP(player, Entity_killEXP(entity));
                 sprite->info = (sprite->info & 0xffffe1ff) | 0x800;
                 sprite->ent->monster->animFrameTime = entity->doomRpg->doomCanvas->time + 250;
 
@@ -623,9 +647,9 @@ void Entity_initspawn(Entity_t* entity)
         entity->monster->ce.mType = monster->mType;
         CombatEntity_setupEnemy(&entity->monster->ce, entity->def->parm);
 
-        // N64 port: Hard -- +20% health (rounded; setters clamp to 255)
+        // N64 port: Hard -- enemies spawn with +20% health
         if (entity->doomRpg->doomCanvas->difficulty == DIFFICULTY_HARD) {
-            int hp = (CombatEntity_getMaxHealth(&entity->monster->ce) * 12 + 5) / 10;
+            int hp = Entity_hardHealth(CombatEntity_getMaxHealth(&entity->monster->ce));
             CombatEntity_setMaxHealth(&entity->monster->ce, hp);
             CombatEntity_setHealth(&entity->monster->ce, hp);
         }
