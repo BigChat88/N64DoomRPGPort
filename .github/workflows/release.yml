@@ -15,14 +15,12 @@ permissions:
 jobs:
   bundle:
     runs-on: ubuntu-latest
-    container:
-      image: ghcr.io/dragonminded/libdragon:preview   # mips64-elf toolchain + $N64_INST
 
     steps:
       - name: Install packaging deps
         run: |
-          apt-get update -qq
-          apt-get install -y --no-install-recommends zip rsync git ca-certificates gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends zip rsync gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64
 
       - name: Checkout (with submodules)
         uses: actions/checkout@v4
@@ -30,8 +28,23 @@ jobs:
           submodules: recursive
           fetch-depth: 0
 
-      - name: Trust the workspace
-        run: git config --global --add safe.directory '*'
+      # The mips64-elf toolchain image is built here from the pinned
+      # submodule's Dockerfile instead of pulled: upstream's prebuilt image
+      # (ghcr.io/dragonminded/libdragon) went away when libdragon moved to
+      # n64brew, and the new one is not public.  The GCC build is slow, so it
+      # is cached in GitHub Actions and only reruns when the submodule's
+      # Dockerfile / build-toolchain.sh change.
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build the libdragon toolchain image
+        uses: docker/build-push-action@v6
+        with:
+          context: core/libdragon
+          load: true
+          tags: libdragon-toolchain:ci
+          cache-from: type=gha,scope=libdragon-toolchain
+          cache-to: type=gha,scope=libdragon-toolchain,mode=max
 
       - name: Version
         id: ver
@@ -42,12 +55,15 @@ jobs:
 
       - name: Build libdragon (pinned submodule) + engine
         run: |
-          make -C core/libdragon -j"$(nproc)" install
-          # The library `install` target does NOT build the host tools.  The
-          # `engine` target below runs n64sym + n64elfcompress, so build and
-          # install those from the pinned submodule into $N64_INST/bin.
-          make -C core/libdragon/tools -j"$(nproc)" n64sym-install n64elfcompress-install
-          make -C core          -j"$(nproc)" engine
+          docker run --rm -v "$PWD":/src -w /src libdragon-toolchain:ci bash -euc '
+            git config --global --add safe.directory "*"
+            make -C core/libdragon -j"$(nproc)" install
+            # The library `install` target does NOT build the host tools.  The
+            # `engine` target below runs n64sym + n64elfcompress, so build and
+            # install those from the pinned submodule into $N64_INST/bin.
+            make -C core/libdragon/tools -j"$(nproc)" n64sym-install n64elfcompress-install
+            make -C core          -j"$(nproc)" engine
+          '
           ls -l core/build/doomrpg.elf.stripped core/build/doomrpg.elf.sym
 
       - name: Cross-compile the Windows host tools
