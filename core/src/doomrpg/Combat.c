@@ -500,6 +500,24 @@ void Combat_launchProjectile(Combat_t* combat)
 	combat->exploded = false;
 }
 
+/* N64 port: Hard -- monster attacks on the player do +10% damage.  Hits are
+ * only a few points, so a per-hit round would mostly add nothing; the tenths
+ * are carried between attacks instead, keeping the long-run bonus at 10%. */
+static int hardDamageCarry;
+static int hardArmorCarry;
+
+static int Combat_hardScale(int dmg, int* carry)
+{
+	int t;
+
+	if (dmg <= 0) {
+		return dmg;
+	}
+	t = dmg * 11 + *carry;
+	*carry = t % 10;
+	return t / 10;
+}
+
 int Combat_monsterSeq(Combat_t* combat)
 {
 	DoomCanvas_t* doomCanvas;
@@ -632,6 +650,10 @@ int Combat_monsterSeq(Combat_t* combat)
 					Hud_addMessage(hud, "Dodged!");
 				}
 				else {
+					if (combat->doomRpg->doomCanvas->difficulty == DIFFICULTY_HARD) {
+						combat->totalDamage = Combat_hardScale(combat->totalDamage, &hardDamageCarry);
+						combat->totalArmorDamage = Combat_hardScale(combat->totalArmorDamage, &hardArmorCarry);
+					}
 					Player_pain(player, combat->totalDamage, combat->totalArmorDamage);
 				}
 			}

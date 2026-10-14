@@ -270,7 +270,7 @@ void Entity_died(Entity_t* entity)
                 gSprite->sprite->renderMode = 7;
                 Game_remove(game, entity);
                 Hud_addMessage(entity->doomRpg->hud, "Fire cleared!");
-                Player_addXP(entity->doomRpg->player, 2);
+                Player_addBonusXP(entity->doomRpg->player, 2);
                 break;
 
             case 12: // Destructible Object
@@ -315,7 +315,7 @@ void Entity_died(Entity_t* entity)
 
                     case 3: // Jammed Door / Weak Wall
                         Hud_addMessage(doomRpg->hud, "Door cleared!");
-                        Player_addXP(entity->doomRpg->player, 1);
+                        Player_addBonusXP(entity->doomRpg->player, 1);
                         break;
 
                     case 4: // Power Coupling
@@ -622,6 +622,13 @@ void Entity_initspawn(Entity_t* entity)
         entity->monster->ce.param2 = monster->param2;
         entity->monster->ce.mType = monster->mType;
         CombatEntity_setupEnemy(&entity->monster->ce, entity->def->parm);
+
+        // N64 port: Hard -- +20% health (rounded; setters clamp to 255)
+        if (entity->doomRpg->doomCanvas->difficulty == DIFFICULTY_HARD) {
+            int hp = (CombatEntity_getMaxHealth(&entity->monster->ce) * 12 + 5) / 10;
+            CombatEntity_setMaxHealth(&entity->monster->ce, hp);
+            CombatEntity_setHealth(&entity->monster->ce, hp);
+        }
 
         // define spectre render mode
         if (entity->def->eSubType == 5 && entity->def->parm == 640) {

@@ -244,6 +244,16 @@ void Player_addXP(Player_t* player, int xp)
 	}
 }
 
+/* N64 port: XP from anything other than a kill (cleared doors/walls, fires,
+ * secrets, map-script rewards).  Dropped on Hard. */
+void Player_addBonusXP(Player_t* player, int xp)
+{
+	if (player->doomRpg->doomCanvas->difficulty == DIFFICULTY_HARD) {
+		return;
+	}
+	Player_addXP(player, xp);
+}
+
 void Player_updateBerserkerTics(Player_t* player)
 {
 	int i;
@@ -429,7 +439,7 @@ void Player_addStatusItem(Player_t* player, int i, int i2)
 		Player_addCredits(player, i2);
 		return;
 	case 3:
-		Player_addXP(player, i2);
+		Player_addBonusXP(player, i2);
 		return;
 	default:
 		return;

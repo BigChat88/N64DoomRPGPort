@@ -8,6 +8,11 @@ struct Entity_s;
 struct Line_s;
 
 struct DoomRPG_s;
+
+/* N64 port: skill setting.  Hard = XP only from kills, enemies spawn with
+ * +20% health and their attacks do +10% damage. */
+#define DIFFICULTY_NORMAL	0
+#define DIFFICULTY_HARD		1
 struct Render_s;
 struct Player_s;
 struct Game_s;
@@ -152,6 +157,7 @@ typedef struct DoomCanvas_s
 	boolean sndPriority; // New
 	boolean renderFloorCeilingTextures; // New
 	boolean musicEnabled; // N64 port: per-level background music (assets/doomOST)
+	int difficulty; // N64 port: DIFFICULTY_NORMAL / DIFFICULTY_HARD
 
 	struct DoomRPG_s* doomRpg;
 	struct Render_s* render;

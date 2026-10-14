@@ -537,6 +537,7 @@ void Menu_initMenu(Menu_t* menu, int i)
 			// N64 port: Bindings/Mouse dropped (dead); Controller kept for the
 			// Rumble Pak toggle.
 			MenuItem_Set(&menuSystem->items[menuSystem->numItems++], "Controller", 0, (i == MENU_INGAME_OPTIONS) ? true : false);
+			MenuItem_Set(&menuSystem->items[menuSystem->numItems++], "Gameplay", 0, (i == MENU_INGAME_OPTIONS) ? true : false);
 
 
 #if 0 // Original Code
@@ -1209,6 +1210,26 @@ void Menu_initMenu(Menu_t* menu, int i)
 			break;
 		}
 
+		// N64 port: Gameplay menu (difficulty mode).
+		case MENU_GAMEPLAY:
+		case MENU_INGAME_GAMEPLAY: {
+			if (i == MENU_INGAME_GAMEPLAY) {
+				strncpy(menu->doomRpg->hud->logMessage, "Gameplay", sizeof(menu->doomRpg->hud->logMessage));
+				menuSystem->oldMenu = MENU_INGAME_OPTIONS;
+				menuSystem->type = 1;
+			}
+			else {
+				menuSystem->oldMenu = MENU_MAIN_OPTIONS;
+				menuSystem->type = 7;
+			}
+
+			MenuItem_Set(&menuSystem->items[menuSystem->numItems++], "Back", 0, 0);
+			// Mode: normal (original rules) / hard (kill-only XP, tougher enemies)
+			MenuItem_Set2(&menuSystem->items[menuSystem->numItems++], "Mode:",
+				menu->doomRpg->doomCanvas->difficulty == DIFFICULTY_HARD ? "hard" : "normal", 0, 0);
+			break;
+		}
+
 	}
 }
 
@@ -1352,6 +1373,14 @@ int Menu_select(Menu_t* menu, int menuId, int itemId)
 					}
 					else {
 						return MENU_CONTROLLER;
+					}
+				}
+				else if (itemId == 4) { // Gameplay
+					if (menuSystem->items[itemId].action == true) {
+						return MENU_INGAME_GAMEPLAY;
+					}
+					else {
+						return MENU_GAMEPLAY;
 					}
 				}
 
@@ -2055,6 +2084,26 @@ int Menu_select(Menu_t* menu, int menuId, int itemId)
 					DoomCanvas_vibrate(doomCanvas, 150); // short test buzz
 				}
 				/* N64 port: saved on Back only (itemId 0) -- see MENU_VIDEO. */
+			}
+
+			menuSystem->paintMenu = true;
+			return menuSystem->menu;
+			break;
+
+		// N64 port: Gameplay menu (difficulty mode).
+		case MENU_GAMEPLAY:
+		case MENU_INGAME_GAMEPLAY:
+
+			if (itemId == 0) { // Back
+				Game_saveConfig(menuSystem->doomRpg->game, 0);
+				return menuSystem->oldMenu;
+			}
+			else if (itemId == 1) { // Mode: normal / hard
+				doomCanvas->difficulty = (doomCanvas->difficulty == DIFFICULTY_HARD) ? DIFFICULTY_NORMAL : DIFFICULTY_HARD;
+				strncpy(menuSystem->items[itemId].textField2,
+					doomCanvas->difficulty == DIFFICULTY_HARD ? "hard" : "normal",
+					sizeof(menuSystem->items[itemId].textField2));
+				/* saved on Back only (itemId 0) -- see MENU_VIDEO. */
 			}
 
 			menuSystem->paintMenu = true;

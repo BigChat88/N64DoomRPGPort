@@ -49,6 +49,7 @@ void Player_addHealth(Player_t* player, int i);
 boolean Player_addItem(Player_t* player, int i, int i2);
 void Player_nextLevel(Player_t* player);
 void Player_addXP(Player_t* player, int xp);
+void Player_addBonusXP(Player_t* player, int xp);
 void Player_updateBerserkerTics(Player_t* player);
 int Player_calcDamageDir(Player_t* player, int i, int i2, int i3, int i4, int i5);
 int Player_calcLevelXP(Player_t* player, int i);

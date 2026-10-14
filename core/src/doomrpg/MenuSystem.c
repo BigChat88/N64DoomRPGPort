@@ -79,6 +79,7 @@ void MenuSystem_back(MenuSystem_t* menuSystem)
 			case MENU_VIDEO:      case MENU_INGAME_VIDEO:
 			case MENU_SOUND:      case MENU_INGAME_SOUND:
 			case MENU_CONTROLLER: case MENU_INGAME_CONTROLLER:
+			case MENU_GAMEPLAY:   case MENU_INGAME_GAMEPLAY:
 			case MENU_DEVELOPER_VARS:
 				Game_saveConfig(menuSystem->doomRpg->game, 0);
 				break;

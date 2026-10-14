@@ -432,9 +432,9 @@ static char* Render_n64Buttonize(char* s)
 		{ "the * and 7 keys",             "the L and R keys" },
 		{ "the * and 7|buttons",          "the L and R|buttons" },
 		{ "the * and 7 buttons",          "the L and R buttons" },
-		/* skip a combat turn: hold A + Z */
-		{ "turn by pressing|the 9 button", "turn by holding|A + Z" },
-		{ "the 9 button",                 "A + Z" },
+		/* skip a combat turn: C-Down */
+		{ "turn by pressing|the 9 button", "turn by pressing|C-Down" },
+		{ "the 9 button",                 "C-Down" },
 		/* OK (select) -> A, only where it names the button */
 		{ "the OK|button",                "the A|button" },
 		{ "the OK button",                "the A button" },

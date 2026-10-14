@@ -162,6 +162,7 @@ DoomCanvas_t* DoomCanvas_init(DoomCanvas_t* doomCanvas, DoomRPG_t* doomRpg) // 0
 	doomCanvas->vibrateEnabled = true;
 	doomCanvas->renderFloorCeilingTextures = true;
 	doomCanvas->musicEnabled = true; // N64 port: default per-level music on
+	doomCanvas->difficulty = DIFFICULTY_NORMAL; // N64 port
 
 	return doomCanvas;
 }
@@ -3810,7 +3811,7 @@ boolean DoomCanvas_updatePlayerAnimDoors(DoomCanvas_t* doomCanvas)
 
 	if (foundSecret) {
 		Hud_addMessage(doomCanvas->hud, "Found Secret!");
-		Player_addXP(doomCanvas->player, 5);
+		Player_addBonusXP(doomCanvas->player, 5);
 		Sound_playSound(doomCanvas->doomRpg->sound, 5133, 0, 3);
 	}
 

@@ -810,6 +810,14 @@ void Game_loadConfig(Game_t* game)
 				SDL_memcpy(keyMappingTemp, keyMapping, sizeof(keyMapping));
 			}
 
+			// N64 port: difficulty.  Appended after the keybinds without a
+			// CONFIG_VERSION bump (that would hide existing saves); an older
+			// Config ends here, the read returns 0 = Normal.
+			boolData = File_readByte(rw);
+			if (game) {
+				game->doomRpg->doomCanvas->difficulty = boolData != 0 ? DIFFICULTY_HARD : DIFFICULTY_NORMAL;
+			}
+
 		}
 		else {
 			printf("loadConfig: save version mismatch (expected %d found %d)\n", CONFIG_VERSION, version);
@@ -1979,6 +1987,9 @@ void Game_saveConfig(Game_t* game, int num)
 			File_writeInt(rw, keyMapping[i].keyBinds[j]);
 		}
 	}
+
+	// N64 port: difficulty (see Game_loadConfig)
+	File_writeByte(rw, game->doomRpg->doomCanvas->difficulty);
 
 	SDL_RWclose(rw);
 }
